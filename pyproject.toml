@@ -1,0 +1,36 @@
+[project]
+name = "sports-club-tyumen"
+version = "0.1.0"
+description = "Website for the Tyumen State University sports club"
+authors = [
+    {name = "Shumay",email = "alexeev1one@mail.ru"}
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi (>=0.139.0,<0.140.0)",
+    "pydantic-settings (>=2.14.2,<3.0.0)",
+    "uvicorn (>=0.50.2,<0.51.0)",
+    "sqlalchemy (>=2.0.51,<3.0.0)",
+    "alembic (>=1.18.5,<2.0.0)",
+    "pwdlib[argon2] (>=0.3.0,<0.4.0)",
+    "email-validator (>=2.3.0,<3.0.0)",
+    "psycopg[binary] (>=3.3.4,<4.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "httpx2 (>=2.5.0,<3.0.0)",
+    "ruff (>=0.15.21,<0.16.0)",
+    "pytest (>=9.1.1,<10.0.0)",
+]
