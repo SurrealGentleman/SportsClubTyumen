@@ -9,7 +9,9 @@ class Settings(BaseSettings):
     database_url: str
     database_echo: bool = False
     secret_key: str = "change-me-in-production"
+    session_cookie_secure: bool = False
     university_email_domain: str = "utmn.ru"
+    app_timezone: str = "Asia/Yekaterinburg"
 
     model_config = SettingsConfigDict(
         env_file=".env",

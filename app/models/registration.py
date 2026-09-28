@@ -3,7 +3,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -37,6 +45,9 @@ class Registration(Base):
         cascade="all, delete-orphan",
     )
 
+    def __str__(self) -> str:
+        return self.team_name or self.captain_name
+
 
 class RegistrationMember(Base):
     __tablename__ = "registration_members"
@@ -65,3 +76,16 @@ class RegistrationMember(Base):
     is_captain: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     registration: Mapped[Registration] = relationship(back_populates="members")
+
+    def __str__(self) -> str:
+        return self.full_name
+
+
+Index(
+    "uq_registrations_competition_team_name_ci",
+    Registration.competition_id,
+    func.lower(Registration.team_name),
+    unique=True,
+    postgresql_where=Registration.team_name.is_not(None),
+    sqlite_where=Registration.team_name.is_not(None),
+)

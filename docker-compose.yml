@@ -9,7 +9,9 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sportclub}:${POSTGRES_PASSWORD:-change_me}@postgres:5432/${POSTGRES_DB:-sportclub}
       DATABASE_ECHO: ${DATABASE_ECHO:-false}
       SECRET_KEY: ${SECRET_KEY:-change_me}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       UNIVERSITY_EMAIL_DOMAIN: ${UNIVERSITY_EMAIL_DOMAIN:-utmn.ru}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Yekaterinburg}
     ports:
       - "8000:8000"
     volumes:

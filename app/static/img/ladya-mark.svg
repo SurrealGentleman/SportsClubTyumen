@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 150" role="img" aria-labelledby="title description">
+  <title id="title">Ладья</title>
+  <desc id="description">Знак студенческого спортивного клуба Ладья</desc>
+  <path d="M25 32h130l-9 18 8 17-10 36c-13 25-34 35-54 40-20-5-41-15-54-40L26 67l8-17z" fill="#fff" stroke="#20aeda" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M45 35v-13m18 13V18m18 17V16m18 19V16m18 19V18m18 17V22" stroke="#20aeda" stroke-width="6" stroke-linecap="square"/>
+  <path d="M61 63v42m0-22h22m0-20v42m36-42-24 42m4-20 22 20" fill="none" stroke="#1268a8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="90" y="124" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#1268a8">ТЮМГУ</text>
+</svg>

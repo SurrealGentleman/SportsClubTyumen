@@ -28,3 +28,6 @@ class Sport(TimestampMixin, Base):
         back_populates="sport",
         cascade="all, delete-orphan",
     )
+
+    def __str__(self) -> str:
+        return self.name

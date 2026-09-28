@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}{{ competition.title }} — ССК «Ладья»{% endblock %}
+
+{% block content %}
+  <section class="page-hero competition-hero">
+    <div class="container">
+      <a class="back-link" href="{{ url_for('competitions') }}">← Все соревнования</a>
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="meta-badge">{{ "Командный формат" if competition.registration_type.value == "team" else "Индивидуальный формат" }}</span>
+        <span class="status-pill {{ 'status-open' if registration_open else 'status-closed' }}">
+          {{ "Регистрация открыта" if registration_open else "Регистрация закрыта" }}
+        </span>
+      </div>
+      <h1>{{ competition.title }}</h1>
+      {% if competition.description %}<p>{{ competition.description }}</p>{% endif %}
+    </div>
+  </section>
+
+  <section class="section-space pt-0">
+    <div class="container">
+      <div class="row g-4 align-items-start">
+        <div class="col-lg-8">
+          <article class="info-card">
+            <h2>Информация о соревновании</h2>
+            <dl class="event-details">
+              <div><dt>Дата</dt><dd>{{ competition.start_date|date_ru }}{% if competition.end_date != competition.start_date %} — {{ competition.end_date|date_ru }}{% endif %}</dd></div>
+              <div><dt>Место</dt><dd>{{ competition.location }}</dd></div>
+              <div><dt>Дедлайн</dt><dd>{{ competition.registration_deadline|datetime_ru }} (время Тюмени)</dd></div>
+              <div><dt>Формат</dt><dd>{{ "Командный" if competition.registration_type.value == "team" else "Индивидуальный" }}</dd></div>
+              {% if competition.registration_type.value == "team" %}
+                <div><dt>Размер команды</dt><dd>от {{ competition.min_team_size }} до {{ competition.max_team_size }} участников</dd></div>
+              {% endif %}
+            </dl>
+          </article>
+        </div>
+        <div class="col-lg-4">
+          <aside class="registration-card">
+            {% if registration_open %}
+              <span class="status-dot"></span>
+              <h2>Можно участвовать</h2>
+              {% if competition.registration_type.value == "individual" %}
+                <p>Заполните короткую форму участника. Понадобится почта ТюмГУ.</p>
+                <a class="btn btn-primary w-100" href="{{ url_for('register_for_competition', slug=competition.slug) }}">Записаться</a>
+              {% else %}
+                <p>Капитан заполняет данные команды и добавляет всех участников.</p>
+                <a class="btn btn-primary w-100" href="{{ url_for('register_for_competition', slug=competition.slug) }}">Записаться командой</a>
+              {% endif %}
+            {% else %}
+              <h2>Приём заявок завершён</h2>
+              <p>Следите за новыми соревнованиями в календаре клуба.</p>
+              <a class="btn btn-outline-primary w-100" href="{{ url_for('competitions') }}">К календарю</a>
+            {% endif %}
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

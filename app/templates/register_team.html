@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Командная заявка — {{ competition.title }}{% endblock %}
+
+{% block content %}
+  <section class="page-hero form-hero">
+    <div class="container">
+      <a class="back-link" href="{{ url_for('competition_detail', slug=competition.slug) }}">← К соревнованию</a>
+      <p class="eyebrow">Командная заявка</p>
+      <h1>{{ competition.title }}</h1>
+      <p>Состав команды: от {{ competition.min_team_size }} до {{ competition.max_team_size }} участников вместе с капитаном.</p>
+    </div>
+  </section>
+
+  <section class="section-space pt-0">
+    <div class="container">
+      <div class="registration-form-card">
+        {% if form_error %}<div class="alert alert-danger" role="alert">{{ form_error }}</div>{% endif %}
+        {% if errors.form %}<div class="alert alert-danger" role="alert">{{ errors.form }}</div>{% endif %}
+
+        {% if not form_error or form_data %}
+          <form method="post" action="{{ url_for('register_for_competition', slug=competition.slug) }}" novalidate>
+            <div class="form-section-heading">
+              <span>01</span>
+              <div><h2>Команда</h2><p>Название будет отображаться в списке заявок.</p></div>
+            </div>
+            <div class="mb-4">
+              <label class="form-label" for="team_name">Название команды</label>
+              <input class="form-control{% if errors.team_name %} is-invalid{% endif %}" id="team_name" name="team_name" value="{{ form_data.get('team_name', '') }}" maxlength="255" required>
+              {% if errors.team_name %}<div class="invalid-feedback">{{ errors.team_name }}</div>{% endif %}
+            </div>
+
+            <div class="form-section-heading mt-5">
+              <span>02</span>
+              <div><h2>Капитан</h2><p>Капитан входит в общее количество участников.</p></div>
+            </div>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label" for="captain_name">ФИО капитана</label>
+                <input class="form-control{% if errors.captain_name %} is-invalid{% endif %}" id="captain_name" name="captain_name" value="{{ form_data.get('captain_name', '') }}" maxlength="255" autocomplete="name" required>
+                {% if errors.captain_name %}<div class="invalid-feedback">{{ errors.captain_name }}</div>{% endif %}
+              </div>
+              <div class="col-md-7">
+                <label class="form-label" for="captain_email">Почта ТюмГУ</label>
+                <input class="form-control{% if errors.captain_email %} is-invalid{% endif %}" id="captain_email" name="captain_email" type="email" value="{{ form_data.get('captain_email', '') }}" placeholder="captain@{{ email_domain }}" maxlength="320" autocomplete="email" required>
+                {% if errors.captain_email %}<div class="invalid-feedback">{{ errors.captain_email }}</div>{% endif %}
+              </div>
+              <div class="col-md-5">
+                <label class="form-label" for="captain_phone">Телефон</label>
+                <input class="form-control{% if errors.captain_phone %} is-invalid{% endif %}" id="captain_phone" name="captain_phone" type="tel" value="{{ form_data.get('captain_phone', '') }}" maxlength="50" autocomplete="tel" required>
+                {% if errors.captain_phone %}<div class="invalid-feedback">{{ errors.captain_phone }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="captain_institute">Институт</label>
+                <input class="form-control{% if errors.captain_institute %} is-invalid{% endif %}" id="captain_institute" name="captain_institute" value="{{ form_data.get('captain_institute', '') }}" maxlength="255" required>
+                {% if errors.captain_institute %}<div class="invalid-feedback">{{ errors.captain_institute }}</div>{% endif %}
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label" for="captain_course">Курс</label>
+                <input class="form-control{% if errors.captain_course %} is-invalid{% endif %}" id="captain_course" name="captain_course" type="number" min="1" max="6" value="{{ form_data.get('captain_course', '') }}" required>
+                {% if errors.captain_course %}<div class="invalid-feedback">{{ errors.captain_course }}</div>{% endif %}
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label" for="captain_group_name">Группа</label>
+                <input class="form-control{% if errors.captain_group_name %} is-invalid{% endif %}" id="captain_group_name" name="captain_group_name" value="{{ form_data.get('captain_group_name', '') }}" maxlength="120" required>
+                {% if errors.captain_group_name %}<div class="invalid-feedback">{{ errors.captain_group_name }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="team-members-heading mt-5">
+              <div class="form-section-heading mb-0">
+                <span>03</span>
+                <div><h2>Участники</h2><p>Добавьте остальных участников без капитана.</p></div>
+              </div>
+              <span class="team-counter"><strong id="team-size">1</strong> / {{ competition.max_team_size }}</span>
+            </div>
+
+            {% set submitted_members = form_data.get('members', []) %}
+            {% set member_count = submitted_members|length if submitted_members else initial_member_count %}
+            <div
+              id="team-members"
+              class="team-members"
+              data-min-team-size="{{ competition.min_team_size }}"
+              data-max-team-size="{{ competition.max_team_size }}"
+            >
+              {% for index in range(member_count) %}
+                {% set member = submitted_members[index] if submitted_members else {} %}
+                <fieldset class="team-member-card">
+                  <div class="team-member-title">
+                    <legend>Участник <span data-member-number>{{ loop.index + 1 }}</span></legend>
+                    <button class="btn btn-sm btn-outline-danger" type="button" data-remove-member>Удалить</button>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-12">
+                      <label class="form-label">ФИО</label>
+                      <input class="form-control{% if errors.get('members.' ~ index ~ '.full_name') %} is-invalid{% endif %}" name="member_full_name" value="{{ member.get('full_name', '') }}" maxlength="255" required>
+                      {% if errors.get('members.' ~ index ~ '.full_name') %}<div class="invalid-feedback">{{ errors.get('members.' ~ index ~ '.full_name') }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Почта ТюмГУ</label>
+                      <input class="form-control{% if errors.get('members.' ~ index ~ '.university_email') %} is-invalid{% endif %}" name="member_university_email" type="email" value="{{ member.get('university_email', '') }}" placeholder="student@{{ email_domain }}" maxlength="320" required>
+                      {% if errors.get('members.' ~ index ~ '.university_email') %}<div class="invalid-feedback">{{ errors.get('members.' ~ index ~ '.university_email') }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Институт</label>
+                      <input class="form-control{% if errors.get('members.' ~ index ~ '.institute') %} is-invalid{% endif %}" name="member_institute" value="{{ member.get('institute', '') }}" maxlength="255" required>
+                      {% if errors.get('members.' ~ index ~ '.institute') %}<div class="invalid-feedback">{{ errors.get('members.' ~ index ~ '.institute') }}</div>{% endif %}
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label">Курс</label>
+                      <input class="form-control{% if errors.get('members.' ~ index ~ '.course') %} is-invalid{% endif %}" name="member_course" type="number" min="1" max="6" value="{{ member.get('course', '') }}" required>
+                      {% if errors.get('members.' ~ index ~ '.course') %}<div class="invalid-feedback">{{ errors.get('members.' ~ index ~ '.course') }}</div>{% endif %}
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label">Группа</label>
+                      <input class="form-control{% if errors.get('members.' ~ index ~ '.group_name') %} is-invalid{% endif %}" name="member_group_name" value="{{ member.get('group_name', '') }}" maxlength="120" required>
+                      {% if errors.get('members.' ~ index ~ '.group_name') %}<div class="invalid-feedback">{{ errors.get('members.' ~ index ~ '.group_name') }}</div>{% endif %}
+                    </div>
+                  </div>
+                </fieldset>
+              {% endfor %}
+            </div>
+
+            <template id="team-member-template">
+              <fieldset class="team-member-card">
+                <div class="team-member-title">
+                  <legend>Участник <span data-member-number></span></legend>
+                  <button class="btn btn-sm btn-outline-danger" type="button" data-remove-member>Удалить</button>
+                </div>
+                <div class="row g-3">
+                  <div class="col-12"><label class="form-label">ФИО</label><input class="form-control" name="member_full_name" maxlength="255" required></div>
+                  <div class="col-md-6"><label class="form-label">Почта ТюмГУ</label><input class="form-control" name="member_university_email" type="email" placeholder="student@{{ email_domain }}" maxlength="320" required></div>
+                  <div class="col-md-6"><label class="form-label">Институт</label><input class="form-control" name="member_institute" maxlength="255" required></div>
+                  <div class="col-6"><label class="form-label">Курс</label><input class="form-control" name="member_course" type="number" min="1" max="6" required></div>
+                  <div class="col-6"><label class="form-label">Группа</label><input class="form-control" name="member_group_name" maxlength="120" required></div>
+                </div>
+              </fieldset>
+            </template>
+
+            <button id="add-team-member" class="btn btn-outline-primary mt-3" type="button">+ Добавить участника</button>
+
+            <div class="form-submit-row">
+              <p>Проверьте состав: капитан учитывается как первый участник команды.</p>
+              <button class="btn btn-primary btn-lg" type="submit">Отправить командную заявку</button>
+            </div>
+          </form>
+        {% else %}
+          <a class="btn btn-outline-primary" href="{{ url_for('competition_detail', slug=competition.slug) }}">Вернуться к соревнованию</a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <script src="{{ url_for('static', path='js/team-registration.js') }}" defer></script>
+{% endblock %}

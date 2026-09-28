@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}{{ sport.name }} — ССК «Ладья»{% endblock %}
+
+{% block content %}
+  <section class="page-hero compact-hero">
+    <div class="container">
+      <a class="back-link" href="{{ url_for('schedule') }}">← Все направления</a>
+      <p class="eyebrow">Расписание секции</p>
+      <h1>{{ sport.name }}</h1>
+      {% if sport.description %}<p>{{ sport.description }}</p>{% endif %}
+    </div>
+  </section>
+
+  <section class="section-space pt-0">
+    <div class="container">
+      {% if trainings %}
+        <div class="row g-4">
+          {% for group in trainings|groupby('group_name') %}
+            <div class="col-lg-6">
+              <article class="schedule-card h-100">
+                <div class="schedule-card-head">
+                  <span>Группа</span>
+                  <h2>{{ group.grouper }}</h2>
+                </div>
+                <div class="training-list">
+                  {% for training in group.list %}
+                    <div class="training-session">
+                      <div class="training-row">
+                        <strong>{{ weekday_names[training.weekday] }}</strong>
+                        <span>{{ training.start_time.strftime('%H:%M') }}–{{ training.end_time.strftime('%H:%M') }}</span>
+                      </div>
+                      <dl class="details-list">
+                        <div><dt>Место</dt><dd>{{ training.location }}</dd></div>
+                        <div><dt>Тренер</dt><dd>{{ training.coach_name }}</dd></div>
+                        {% if training.coach_email %}
+                          <div><dt>Почта</dt><dd><a href="mailto:{{ training.coach_email }}">{{ training.coach_email }}</a></dd></div>
+                        {% endif %}
+                      </dl>
+                      {% if training.notes %}<p class="card-note">{{ training.notes }}</p>{% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+              </article>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <h2>Расписание уточняется</h2>
+          <p>Для этого направления пока нет активных тренировок.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

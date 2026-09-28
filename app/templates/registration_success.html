@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Заявка принята — ССК «Ладья»{% endblock %}
+
+{% block content %}
+  <section class="success-section">
+    <div class="container">
+      <div class="success-card mx-auto text-center">
+        <div class="success-icon" aria-hidden="true">✓</div>
+        <p class="eyebrow">Заявка №{{ registration.id }}</p>
+        <h1>Вы зарегистрированы</h1>
+        <p>Заявка на соревнование «{{ competition.title }}» успешно принята.</p>
+        <div class="d-flex flex-column flex-sm-row justify-content-center gap-2">
+          <a class="btn btn-primary" href="{{ url_for('competition_detail', slug=competition.slug) }}">К соревнованию</a>
+          <a class="btn btn-outline-primary" href="{{ url_for('competitions') }}">Все соревнования</a>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

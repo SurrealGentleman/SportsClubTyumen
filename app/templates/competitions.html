@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Соревнования — ССК «Ладья»{% endblock %}
+
+{% block content %}
+  <section class="page-hero compact-hero">
+    <div class="container">
+      <p class="eyebrow">Календарь клуба</p>
+      <h1>Соревнования</h1>
+      <p>Выбирай событие, изучай условия и готовься представить свой институт или команду.</p>
+    </div>
+  </section>
+
+  <section class="section-space pt-0">
+    <div class="container">
+      {% if competitions %}
+        <div class="competition-list">
+          {% for competition in competitions %}
+            <article class="competition-card">
+              <div class="competition-date">
+                <strong>{{ competition.start_date.day }}</strong>
+                <span>{{ competition.start_date.strftime('%m.%Y') }}</span>
+              </div>
+              <div class="competition-body">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                  <span class="meta-badge">{{ "Командная" if competition.registration_type.value == "team" else "Индивидуальная" }}</span>
+                  {% if registration_is_open(competition) %}
+                    <span class="status-pill status-open">Приём заявок открыт</span>
+                  {% else %}
+                    <span class="status-pill status-closed">Приём заявок закрыт</span>
+                  {% endif %}
+                </div>
+                <h2>{{ competition.title }}</h2>
+                <p class="competition-location">{{ competition.location }}</p>
+                {% if competition.description %}<p>{{ competition.description|truncate(180) }}</p>{% endif %}
+                <a class="btn btn-primary" href="{{ url_for('competition_detail', slug=competition.slug) }}">Подробнее</a>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <h2>Новых соревнований пока нет</h2>
+          <p>Опубликованные события появятся на этой странице.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}ССК «Ладья» — Спортивный клуб ТюмГУ{% endblock %}
+
+{% block content %}
+  <section class="hero-section">
+    <div class="container">
+      <div class="hero-card text-center mx-auto">
+        <img class="hero-mark" src="{{ url_for('static', path='img/ladya-mark.svg') }}" alt="Ладья">
+        <p class="eyebrow">Студенческий спортивный клуб</p>
+        <h1>ССК «Ладья»</h1>
+        <p class="hero-lead">Тренируйся, соревнуйся и становись частью спортивного сообщества ТюмГУ.</p>
+
+        <div class="hero-stats" aria-label="Клуб в цифрах">
+          <div><strong>14</strong><span>направлений</span></div>
+          <div><strong>500+</strong><span>участников</span></div>
+          <div><strong>12</strong><span>месяцев спорта</span></div>
+        </div>
+
+        <div class="hero-actions">
+          <a class="btn btn-primary btn-lg" href="{{ url_for('schedule') }}">Расписание тренировок</a>
+          <a class="btn btn-outline-primary btn-lg" href="{{ url_for('competitions') }}">Записаться на соревнования</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-space">
+    <div class="container">
+      <div class="section-heading text-center">
+        <p class="eyebrow">Всё в одном месте</p>
+        <h2>Начни со своего маршрута</h2>
+      </div>
+      <div class="row g-4 justify-content-center">
+        <div class="col-md-6 col-lg-4">
+          <a class="feature-card" href="{{ url_for('schedule') }}">
+            <span class="feature-number">01</span>
+            <h3>Выбери секцию</h3>
+            <p>Посмотри направления, группы, время тренировок и контакты тренеров.</p>
+            <span class="feature-link">Открыть расписание →</span>
+          </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <a class="feature-card" href="{{ url_for('competitions') }}">
+            <span class="feature-number">02</span>
+            <h3>Прими вызов</h3>
+            <p>Следи за событиями клуба и выбирай индивидуальный или командный старт.</p>
+            <span class="feature-link">Смотреть соревнования →</span>
+          </a>
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <div class="feature-card feature-card-muted">
+            <span class="feature-number">03</span>
+            <h3>ИИ-помощник</h3>
+            <p>Персональный помощник клуба появится в одной из следующих версий.</p>
+            <span class="status-pill">В разработке</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

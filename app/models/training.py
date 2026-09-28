@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from datetime import time
+from enum import Enum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Enum as SqlEnum,
     ForeignKey,
     SmallInteger,
     String,
@@ -20,6 +22,27 @@ if TYPE_CHECKING:
     from app.models.sport import Sport
 
 
+class TrainingGroup(str, Enum):
+    men = "Мужчины"
+    women = "Девушки"
+    mixed = "Общая группа"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+WEEKDAY_CHOICES = (
+    (0, "Понедельник"),
+    (1, "Вторник"),
+    (2, "Среда"),
+    (3, "Четверг"),
+    (4, "Пятница"),
+    (5, "Суббота"),
+    (6, "Воскресенье"),
+)
+WEEKDAY_NAMES = tuple(label for _, label in WEEKDAY_CHOICES)
+
+
 class Training(Base):
     __tablename__ = "trainings"
     __table_args__ = (
@@ -32,7 +55,16 @@ class Training(Base):
         index=True,
         nullable=False,
     )
-    group_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    group_name: Mapped[TrainingGroup] = mapped_column(
+        SqlEnum(
+            TrainingGroup,
+            name="training_group",
+            native_enum=False,
+            values_callable=lambda enum: [item.value for item in enum],
+            create_constraint=True,
+        ),
+        nullable=False,
+    )
     weekday: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     start_time: Mapped[time] = mapped_column(Time, nullable=False)
     end_time: Mapped[time] = mapped_column(Time, nullable=False)

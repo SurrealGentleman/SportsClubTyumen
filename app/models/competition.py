@@ -26,6 +26,12 @@ class RegistrationType(str, Enum):
     individual = "individual"
     team = "team"
 
+    def __str__(self) -> str:
+        return {
+            self.individual: "Индивидуальная",
+            self.team: "Командная",
+        }[self]
+
 
 class Competition(TimestampMixin, Base):
     __tablename__ = "competitions"
@@ -70,3 +76,6 @@ class Competition(TimestampMixin, Base):
         back_populates="competition",
         cascade="all, delete-orphan",
     )
+
+    def __str__(self) -> str:
+        return self.title

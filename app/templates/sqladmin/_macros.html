@@ -1,0 +1,46 @@
+{% import "sqladmin_original/_macros.html" as original %}
+
+{% macro display_menu(menu, request) %}
+  {{ original.display_menu(menu, request) }}
+{% endmacro %}
+
+{% macro render_field(field, kwargs={}, ajax_lookup_url="") %}
+  <div class="mb-3 form-group row">
+    {{ field.label(
+      class_="form-label col-sm-2 col-form-label" + (' required-label' if field.flags.required else ''),
+      **({'title': "Обязательное поле"} if field.flags.required else {})
+    ) }}
+    <div class="col-sm-10">
+      {% if ajax_lookup_url and field.loader is defined %}
+        {% set extra = {"data_url": ajax_lookup_url} %}
+      {% else %}
+        {% set extra = {} %}
+      {% endif %}
+      {% if field.errors %}
+        {{ field(class_="form-control is-invalid", **extra) }}
+      {% else %}
+        {{ field(**extra) }}
+      {% endif %}
+      {% for error in field.errors %}
+        <div class="invalid-feedback">{{ error }}</div>
+      {% endfor %}
+      {% if field.description %}
+        <small class="text-muted">{{ field.description }}</small>
+      {% endif %}
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro render_form_fields(form, form_opts=None, ajax_lookup_url="") %}
+  {% if form.hidden_tag is defined %}
+    {{ form.hidden_tag() }}
+  {% else %}
+    {% for field in form if field.widget.input_type == 'hidden' %}
+      {{ field }}
+    {% endfor %}
+  {% endif %}
+
+  {% for field in form if field.widget.input_type != 'hidden' %}
+    {{ render_field(field, kwargs, ajax_lookup_url=ajax_lookup_url) }}
+  {% endfor %}
+{% endmacro %}

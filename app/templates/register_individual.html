@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Заявка — {{ competition.title }}{% endblock %}
+
+{% block content %}
+  <section class="page-hero form-hero">
+    <div class="container">
+      <a class="back-link" href="{{ url_for('competition_detail', slug=competition.slug) }}">← К соревнованию</a>
+      <p class="eyebrow">Индивидуальная заявка</p>
+      <h1>{{ competition.title }}</h1>
+      <p>Заполните данные участника. Все поля проверяются перед отправкой.</p>
+    </div>
+  </section>
+
+  <section class="section-space pt-0">
+    <div class="container">
+      <div class="registration-form-card">
+        {% if form_error %}
+          <div class="alert alert-danger" role="alert">{{ form_error }}</div>
+          <a class="btn btn-outline-primary" href="{{ url_for('competition_detail', slug=competition.slug) }}">Вернуться к соревнованию</a>
+        {% else %}
+          <form method="post" action="{{ url_for('register_for_competition', slug=competition.slug) }}" novalidate>
+            <div class="form-section-heading">
+              <span>01</span>
+              <div><h2>Данные участника</h2><p>Используйте актуальные данные студента ТюмГУ.</p></div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label" for="full_name">ФИО</label>
+                <input class="form-control{% if errors.full_name %} is-invalid{% endif %}" id="full_name" name="full_name" value="{{ form_data.get('full_name', '') }}" maxlength="255" autocomplete="name" required>
+                {% if errors.full_name %}<div class="invalid-feedback">{{ errors.full_name }}</div>{% endif %}
+              </div>
+              <div class="col-md-7">
+                <label class="form-label" for="university_email">Почта ТюмГУ</label>
+                <input class="form-control{% if errors.university_email %} is-invalid{% endif %}" id="university_email" name="university_email" type="email" value="{{ form_data.get('university_email', '') }}" placeholder="student@{{ email_domain }}" maxlength="320" autocomplete="email" required>
+                {% if errors.university_email %}<div class="invalid-feedback">{{ errors.university_email }}</div>{% else %}<div class="form-text">Только адрес в домене @{{ email_domain }}</div>{% endif %}
+              </div>
+              <div class="col-md-5">
+                <label class="form-label" for="phone">Телефон</label>
+                <input class="form-control{% if errors.phone %} is-invalid{% endif %}" id="phone" name="phone" type="tel" value="{{ form_data.get('phone', '') }}" maxlength="50" autocomplete="tel" required>
+                {% if errors.phone %}<div class="invalid-feedback">{{ errors.phone }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="institute">Институт</label>
+                <input class="form-control{% if errors.institute %} is-invalid{% endif %}" id="institute" name="institute" value="{{ form_data.get('institute', '') }}" maxlength="255" required>
+                {% if errors.institute %}<div class="invalid-feedback">{{ errors.institute }}</div>{% endif %}
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label" for="course">Курс</label>
+                <input class="form-control{% if errors.course %} is-invalid{% endif %}" id="course" name="course" type="number" min="1" max="6" value="{{ form_data.get('course', '') }}" required>
+                {% if errors.course %}<div class="invalid-feedback">{{ errors.course }}</div>{% endif %}
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="form-label" for="group_name">Группа</label>
+                <input class="form-control{% if errors.group_name %} is-invalid{% endif %}" id="group_name" name="group_name" value="{{ form_data.get('group_name', '') }}" maxlength="120" required>
+                {% if errors.group_name %}<div class="invalid-feedback">{{ errors.group_name }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="form-submit-row">
+              <p>Отправляя форму, вы подтверждаете корректность указанных данных.</p>
+              <button class="btn btn-primary btn-lg" type="submit">Отправить заявку</button>
+            </div>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

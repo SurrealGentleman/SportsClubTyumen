@@ -1,0 +1,37 @@
+{% extends "sqladmin/layout.html" %}
+
+{% block content %}
+  {% set cards = [
+    ("Виды спорта", dashboard.sports, "fa-person-running", "sport"),
+    ("Активные тренировки", dashboard.trainings, "fa-calendar-days", "training"),
+    ("Текущие соревнования", dashboard.competitions, "fa-trophy", "competition"),
+    ("Всего заявок", dashboard.registrations, "fa-clipboard-list", "registration")
+  ] %}
+  {% for label, value, icon, identity in cards %}
+    <div class="col-sm-6 col-xl-3">
+      <a class="card card-link card-link-pop text-decoration-none" href="{{ url_for('admin:list', identity=identity) }}">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <span class="avatar bg-blue-lt"><i class="fa-solid {{ icon }}"></i></span>
+            <div>
+              <div class="text-secondary">{{ label }}</div>
+              <div class="h1 mb-0">{{ value }}</div>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+  {% endfor %}
+
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Быстрые действия</h3></div>
+      <div class="card-body d-flex flex-wrap gap-2">
+        <a class="btn btn-primary" href="{{ url_for('admin:create', identity='sport') }}">Добавить вид спорта</a>
+        <a class="btn btn-primary" href="{{ url_for('admin:create', identity='training') }}">Добавить тренировку</a>
+        <a class="btn btn-primary" href="{{ url_for('admin:create', identity='competition') }}">Добавить соревнование</a>
+        <a class="btn btn-outline-primary" href="/" target="_blank" rel="noopener">Открыть сайт</a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

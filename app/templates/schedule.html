@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Расписание — ССК «Ладья»{% endblock %}
+
+{% block content %}
+  <section class="page-hero compact-hero">
+    <div class="container">
+      <p class="eyebrow">Тренировки</p>
+      <h1>Выбери направление</h1>
+      <p>Нажми на вид спорта, чтобы увидеть группы, время, место и контакты тренера.</p>
+    </div>
+  </section>
+
+  <section class="section-space pt-0">
+    <div class="container">
+      {% if sports %}
+        <div class="sport-grid">
+          {% for sport in sports %}
+            <a class="sport-card" href="{{ url_for('sport_detail', slug=sport.slug) }}">
+              <span class="sport-card-index">{{ "%02d"|format(loop.index) }}</span>
+              <h2>{{ sport.name }}</h2>
+              {% if sport.description %}<p>{{ sport.description|truncate(110) }}</p>{% endif %}
+              <span>Смотреть расписание →</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <h2>Расписание готовится</h2>
+          <p>Активные спортивные направления скоро появятся здесь.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}
