@@ -1,9 +1,29 @@
 from datetime import UTC, date, datetime, time
+from html.parser import HTMLParser
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.core.branding import BRAND_ASSETS
 from app.models import Competition, RegistrationType, Sport, Training
+
+
+class BrandMarkup(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.images: dict[str, str | None] = {}
+        self.favicons: list[str | None] = []
+        self.body_style = ""
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        if tag == "img":
+            self.images[attributes.get("class") or ""] = attributes.get("src")
+        elif tag == "link" and attributes.get("rel") == "icon":
+            self.favicons.append(attributes.get("href"))
+        elif tag == "body":
+            self.body_style = attributes.get("style") or ""
 
 
 def add_public_content(db_session: Session) -> None:
@@ -69,13 +89,62 @@ def add_public_content(db_session: Session) -> None:
 
 def test_home_page_and_static_assets_are_available(client: TestClient) -> None:
     page_response = client.get("/")
-    asset_response = client.get("/static/img/ladya-mark.svg")
 
     assert page_response.status_code == 200
     assert "ССК «Ладья»" in page_response.text
     assert "Расписание тренировок" in page_response.text
-    assert asset_response.status_code == 200
-    assert asset_response.headers["content-type"].startswith("image/svg+xml")
+
+
+@pytest.mark.parametrize("asset_path", sorted(set(BRAND_ASSETS.values())))
+def test_brand_assets_are_available(client: TestClient, asset_path: str) -> None:
+    response = client.get(f"/static/{asset_path}")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/png")
+    assert response.content.startswith(b"\x89PNG\r\n\x1a\n")
+
+
+@pytest.mark.parametrize("page_path", ["/", "/schedule", "/competitions"])
+@pytest.mark.parametrize("custom_assets", [False, True])
+def test_pages_use_brand_assets_for_each_image_role(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    page_path: str,
+    custom_assets: bool,
+) -> None:
+    if custom_assets:
+        overrides = {
+            "header_logo": "img/logo_utmn_mini2_rus.png",
+            "home_logo": "img/logo_utmn_mini1_rus.png",
+            "favicon": "img/logo_ladya_no-back_44x32.png",
+            "favicon_small": "img/logo_ladya_no-back_22x16.png",
+            "background_logo": "img/logo_ladya_white-back_249x180.png",
+        }
+        for role, asset_path in overrides.items():
+            monkeypatch.setitem(BRAND_ASSETS, role, asset_path)
+
+    response = client.get(page_path)
+    assert response.status_code == 200
+    markup = BrandMarkup()
+    markup.feed(response.text)
+
+    expected_urls = {
+        role: str(client.app.url_path_for("static", path=asset_path))
+        for role, asset_path in BRAND_ASSETS.items()
+    }
+    assert markup.images["navbar-brand-logo"] == str(
+        response.url.copy_with(path=expected_urls["header_logo"])
+    )
+    assert markup.favicons == [
+        str(response.url.copy_with(path=expected_urls["favicon"])),
+        str(response.url.copy_with(path=expected_urls["favicon_small"])),
+    ]
+    background_url = str(response.url.copy_with(path=expected_urls["background_logo"]))
+    assert f"--brand-background-image: url('{background_url}')" in markup.body_style
+    if page_path == "/":
+        assert markup.images["hero-mark"] == str(
+            response.url.copy_with(path=expected_urls["home_logo"])
+        )
 
 
 def test_schedule_shows_only_active_sports(
@@ -130,6 +199,6 @@ def test_competitions_show_only_published_items(
     assert detail_response.status_code == 200
     assert "от 5 до 10 участников" in detail_response.text
     assert "Записаться командой" in detail_response.text
-    assert "25 января 2027, 23:00 (время Тюмени)" in detail_response.text
+    assert "25 января 2027, 23:00" in detail_response.text
     assert "/competitions/rectors-cup/register" in detail_response.text
     assert hidden_response.status_code == 404

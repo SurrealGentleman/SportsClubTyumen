@@ -10,6 +10,7 @@ from starlette.datastructures import FormData
 from starlette.templating import Jinja2Templates
 
 from app.api.deps import SessionDep
+from app.core.branding import BRAND_ASSETS
 from app.core.config import settings
 from app.core.time import local_datetime
 from app.models import Competition, RegistrationType, Sport
@@ -138,6 +139,7 @@ def registration_form_context(
 templates.env.filters["date_ru"] = format_date
 templates.env.filters["datetime_ru"] = format_datetime
 templates.env.globals["weekday_names"] = WEEKDAY_NAMES
+templates.env.globals["brand_assets"] = BRAND_ASSETS
 
 
 @router.get("/", response_class=HTMLResponse, name="home")
