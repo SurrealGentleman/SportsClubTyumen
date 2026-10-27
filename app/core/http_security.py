@@ -3,7 +3,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from app.admin.rate_limit import LoginRateLimiter
+from app.core.rate_limit import DatabaseRateLimiter
 
 
 class RequestLimitMiddleware:
@@ -11,7 +11,7 @@ class RequestLimitMiddleware:
         self,
         app: ASGIApp,
         *,
-        limiter: LoginRateLimiter,
+        limiter: DatabaseRateLimiter,
         request_limit: int,
         registration_limit: int,
     ) -> None:

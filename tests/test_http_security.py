@@ -4,6 +4,7 @@ from pydantic import SecretStr
 from sqlalchemy import select
 
 from app.admin.rate_limit import LoginRateLimiter
+from app.core.rate_limit import DatabaseRateLimiter
 from app.db.dependencies import get_db
 from app.core.config import Settings, settings
 from app.main import create_app
@@ -25,7 +26,7 @@ def limited_app(monkeypatch, db_engine, testing_session_maker):
 
 
 def test_general_limit_and_expiry(limited_app, monkeypatch):
-    monkeypatch.setattr("app.admin.rate_limit.time.time", lambda: 10000)
+    monkeypatch.setattr("app.core.rate_limit.time.time", lambda: 10000)
     with TestClient(limited_app) as client:
         for _ in range(3):
             assert client.get("/").status_code == 200
@@ -41,7 +42,7 @@ def test_general_limit_and_expiry(limited_app, monkeypatch):
         )
         assert client.get("/api/v1/health").status_code == 200
         assert client.get("/static/css/app.css").status_code == 200
-        monkeypatch.setattr("app.admin.rate_limit.time.time", lambda: 10060)
+        monkeypatch.setattr("app.core.rate_limit.time.time", lambda: 10060)
         assert client.get("/").status_code == 200
 
 
@@ -139,7 +140,7 @@ def test_public_cleanup_never_resets_admin_login_limit(
     monkeypatch,
     testing_session_maker,
 ):
-    monkeypatch.setattr("app.admin.rate_limit.time.time", lambda: 10000)
+    monkeypatch.setattr("app.core.rate_limit.time.time", lambda: 10000)
     login = LoginRateLimiter(
         testing_session_maker,
         "secret",
@@ -148,13 +149,11 @@ def test_public_cleanup_never_resets_admin_login_limit(
         window_seconds=900,
     )
     login.consume("admin", "192.0.2.1")
-    monkeypatch.setattr("app.admin.rate_limit.time.time", lambda: 10100)
-    monkeypatch.setattr("app.admin.rate_limit.secrets.randbelow", lambda *args: 0)
-    public = LoginRateLimiter(
+    monkeypatch.setattr("app.core.rate_limit.time.time", lambda: 10100)
+    monkeypatch.setattr("app.core.rate_limit.secrets.randbelow", lambda *args: 0)
+    public = DatabaseRateLimiter(
         testing_session_maker,
         "secret",
-        account_limit=1,
-        ip_limit=1,
         window_seconds=60,
         counter_table=RequestLimit.__table__,
     )

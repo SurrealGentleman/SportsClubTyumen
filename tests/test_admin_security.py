@@ -195,7 +195,7 @@ def test_login_account_limit_applies_to_new_sessions_and_correct_password(
     monkeypatch.setattr(
         "app.admin.auth.verify_password", lambda *args: calls.append(args) or False
     )
-    monkeypatch.setattr("app.admin.rate_limit.time.time", lambda: 10000)
+    monkeypatch.setattr("app.core.rate_limit.time.time", lambda: 10000)
     for index in range(5):
         with TestClient(test_app, client=(f"192.0.2.{index}", 5000)) as browser:
             token = admin_token(browser)
@@ -221,7 +221,7 @@ def test_login_account_limit_applies_to_new_sessions_and_correct_password(
     assert response.headers["retry-after"] == "900"
     assert "Слишком много попыток входа" in response.text
     assert len(calls) == 5  # Blocked requests never invoke Argon2.
-    monkeypatch.setattr("app.admin.rate_limit.time.time", lambda: 10900)
+    monkeypatch.setattr("app.core.rate_limit.time.time", lambda: 10900)
     monkeypatch.setattr("app.admin.auth.verify_password", lambda *args: True)
     response = client.post(
         "/admin/login",

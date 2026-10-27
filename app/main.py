@@ -8,11 +8,11 @@ from starlette.types import ASGIApp
 from urllib.parse import urlsplit
 
 from app.admin.setup import setup_admin
-from app.admin.rate_limit import LoginRateLimiter
 from app.api.router import router as api_router
 from app.core.config import settings
 from app.core.error_pages import setup_error_handlers
 from app.core.http_security import RequestLimitMiddleware
+from app.core.rate_limit import DatabaseRateLimiter
 from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.api_docs import setup_api_docs
 from app.core.templating import templates
@@ -56,11 +56,9 @@ def create_app(
 
     app.add_middleware(
         RequestLimitMiddleware,
-        limiter=LoginRateLimiter(
+        limiter=DatabaseRateLimiter(
             session_maker,
             settings.secret_key,
-            account_limit=1,
-            ip_limit=1,
             window_seconds=60,
             counter_table=RequestLimit.__table__,
         ),
