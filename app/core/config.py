@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     render: bool = False
     render_external_url: str = ""
     public_base_url: str = ""
+    csp_report_only: bool = False
+    csp_captcha_report_only: bool = True
     request_limit_per_minute: int = Field(default=120, ge=1)
     registration_limit_per_minute: int = Field(default=10, ge=1)
     admin_login_account_limit: int = Field(default=5, ge=1)

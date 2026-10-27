@@ -1,8 +1,7 @@
-from starlette.datastructures import MutableHeaders
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.admin.rate_limit import LoginRateLimiter
 
@@ -49,14 +48,3 @@ class RequestLimitMiddleware:
             await response(scope, receive, send)
             return
         await self.app(scope, receive, send)
-
-class HSTSMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        async def add_header(message: Message) -> None:
-            if scope.get("scheme") == "https" and message["type"] == "http.response.start":
-                MutableHeaders(scope=message)["strict-transport-security"] = "max-age=31536000"
-            await send(message)
-        await self.app(scope, receive, add_header)

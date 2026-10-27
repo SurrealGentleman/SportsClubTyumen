@@ -31,6 +31,8 @@ def test_general_limit_and_expiry(limited_app, monkeypatch):
             assert client.get("/").status_code == 200
         response = client.get("/", headers={"Accept": "application/json"})
         assert response.status_code == 429
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
         assert response.headers["retry-after"] == "60"
         assert "Слишком много запросов" in response.json()["detail"]
         # Forged forwarding headers cannot allocate another client's quota.
@@ -124,6 +126,7 @@ def test_https_redirect_secure_cookie_hsts_and_trusted_host(
         assert login.headers["strict-transport-security"] == "max-age=31536000"
         redirect = client.get("http://club.example/", follow_redirects=False)
         assert redirect.status_code == 307
+        assert redirect.headers["x-frame-options"] == "DENY"
         assert redirect.headers["location"] == "https://club.example/"
         assert "strict-transport-security" not in redirect.headers
         assert (
