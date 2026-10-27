@@ -7,7 +7,7 @@ from starlette.datastructures import FormData
 
 from app.db.dependencies import SessionDep, SessionFactoryDep
 from app.core.config import settings
-from app.core.privacy import CONSENT_VERSION
+from app.core.privacy import consent_document_hash
 from app.core.templating import templates
 from app.models import Competition, RegistrationType
 from app.routers._competition_helpers import get_published_competition
@@ -92,7 +92,7 @@ def registration_form_context(
         "errors": errors or {},
         "form_error": form_error,
         "initial_member_count": max((competition.min_team_size or 1) - 1, 0),
-        "consent_version": CONSENT_VERSION,
+        "consent_version": consent_document_hash(),
         "is_team_registration": competition.registration_type == RegistrationType.team,
         "captcha_enabled": settings.captcha_enabled,
         "captcha_ready": settings.captcha_ready,
@@ -230,13 +230,15 @@ def _submit_registration(
                 status_code=status.HTTP_201_CREATED,
             )
     except registration_service.RegistrationError as exc:
+        consent_changed = isinstance(exc, registration_service.ConsentChangedError)
         return templates.TemplateResponse(
             request,
             template_name,
             registration_form_context(
                 competition,
                 form_data=form_data,
-                form_error=exc.message,
+                errors={"consent_version": exc.message} if consent_changed else None,
+                form_error=None if consent_changed else exc.message,
             ),
             status_code=status.HTTP_409_CONFLICT,
         )

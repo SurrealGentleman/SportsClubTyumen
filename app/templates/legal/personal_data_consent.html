@@ -6,7 +6,8 @@
   <section class="section-space">
     <div class="container">
       <article class="info-card legal-document mx-auto">
-        {% include consent_document_template %}
+        <h1>Согласие на обработку персональных данных</h1>
+        {% if document_text %}<div class="legal-document-text">{{ document_text }}</div>{% endif %}
       </article>
     </div>
   </section>

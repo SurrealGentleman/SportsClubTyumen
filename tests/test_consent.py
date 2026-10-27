@@ -9,9 +9,11 @@ from alembic.operations import Operations
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, inspect, select, text
 from sqlalchemy.orm import Session
+from markupsafe import escape
 
 from app.admin.views import format_admin_datetime
-from app.core.privacy import CONSENT_VERSION, consent_document_text
+from app.core import privacy
+from app.core.privacy import consent_document_hash, consent_document_text
 from app.models import Competition, Registration, RegistrationType
 
 
@@ -19,23 +21,97 @@ class ConsentMarkup(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.inputs: dict[str, dict[str, str | None]] = {}
-        self.main_text: list[str] = []
-        self.in_main = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
-        if tag == "main":
-            self.in_main = True
         if tag == "input" and attributes.get("name"):
             self.inputs[str(attributes["name"])] = attributes
 
-    def handle_endtag(self, tag: str) -> None:
-        if tag == "main":
-            self.in_main = False
 
-    def handle_data(self, data: str) -> None:
-        if self.in_main:
-            self.main_text.append(data)
+@pytest.fixture()
+def legal_documents(tmp_path, monkeypatch):
+    monkeypatch.setattr(privacy, "DOCUMENTS_DIR", tmp_path)
+    (tmp_path / "personal_data_consent.txt").write_text(
+        'Текст согласия.\n\nВторой абзац. <script>alert("x")</script> {{ 7 * 7 }}',
+        encoding="utf-8",
+    )
+    (tmp_path / "privacy_policy.txt").write_text(
+        "Текст политики.\n\nКонтакты оператора.", encoding="utf-8"
+    )
+    return tmp_path
+
+
+@pytest.mark.parametrize(
+    "path,filename",
+    [
+        ("/legal/personal-data-consent", "personal_data_consent.txt"),
+        ("/legal/privacy-policy", "privacy_policy.txt"),
+    ],
+)
+def test_legal_pages_display_plain_text_without_executing_markup(
+    client, legal_documents, path, filename
+):
+    document = (legal_documents / filename).read_text(encoding="utf-8")
+    response = client.get(path)
+    assert response.status_code == 200
+    assert str(escape(document)) in response.text
+    assert '<script>alert("x")</script>' not in response.text
+    assert 'class="legal-document-text"' in response.text
+
+
+def test_editing_consent_automatically_invalidates_open_forms_and_preserves_records(
+    client, db_session, registration_form, legal_documents
+):
+    path, payload = registration_form
+    payload["consent_version"] = consent_document_hash()
+    old_hash = payload["consent_version"]
+    document = legal_documents / "personal_data_consent.txt"
+    document.write_text("Новый утверждённый текст согласия.", encoding="utf-8")
+    assert consent_document_hash() != old_hash
+
+    rejected = client.post(path, data=payload)
+    markup = ConsentMarkup()
+    markup.feed(rejected.text)
+    assert rejected.status_code == 422
+    assert "checked" not in markup.inputs["personal_data_consent"]
+    assert markup.inputs["consent_version"]["value"] == consent_document_hash()
+    assert db_session.scalar(select(Registration)) is None
+
+    payload["consent_version"] = consent_document_hash()
+    assert client.post(path, data=payload).status_code == 201
+    registration = db_session.scalar(select(Registration))
+    saved_text = registration.consent_document_text
+    saved_hash = registration.consent_document_version
+    assert saved_text == "Новый утверждённый текст согласия."
+    assert saved_hash == consent_document_hash(saved_text)
+
+    document.write_text("Ещё одно изменение документа.", encoding="utf-8")
+    db_session.refresh(registration)
+    assert registration.consent_document_text == saved_text
+    assert registration.consent_document_version == saved_hash
+
+
+def test_consent_changed_during_captcha_cannot_save_a_different_document(
+    client, db_session, registration_form, legal_documents, monkeypatch
+):
+    path, payload = registration_form
+    payload["consent_version"] = consent_document_hash()
+
+    def change_document(token, host):
+        (legal_documents / "personal_data_consent.txt").write_text(
+            "Документ изменился во время проверки CAPTCHA.", encoding="utf-8"
+        )
+
+    monkeypatch.setattr(
+        "app.routers.registrations.verify_smartcaptcha", change_document
+    )
+    response = client.post(path, data=payload)
+    markup = ConsentMarkup()
+    markup.feed(response.text)
+    assert response.status_code == 409
+    assert "Документ согласия изменился" in response.text
+    assert "checked" not in markup.inputs["personal_data_consent"]
+    assert db_session.scalar(select(Registration)) is None
 
 
 @pytest.fixture(params=[RegistrationType.individual, RegistrationType.team])
@@ -66,7 +142,7 @@ def registration_form(
         "group_name": "01",
         "phone": "+7 900 000-00-00",
         "personal_data_consent": "on",
-        "consent_version": CONSENT_VERSION,
+        "consent_version": consent_document_hash(),
     }
     payload: dict[str, str | list[str]] = dict(participant)
     if registration_type == RegistrationType.team:
@@ -79,7 +155,7 @@ def registration_form(
             "captain_group_name": participant["group_name"],
             "captain_phone": participant["phone"],
             "personal_data_consent": "on",
-            "consent_version": CONSENT_VERSION,
+            "consent_version": consent_document_hash(),
             "members_consents_confirmed": "on",
             "member_full_name": ["Пётр Петров"],
             "member_university_email": ["member@study.utmn.ru"],
@@ -104,7 +180,7 @@ def test_forms_show_unchecked_consent_and_document_links(
     assert checkbox["type"] == "checkbox"
     assert "required" in checkbox
     assert "checked" not in checkbox
-    assert markup.inputs["consent_version"]["value"] == CONSENT_VERSION
+    assert markup.inputs["consent_version"]["value"] == consent_document_hash()
     assert "/legal/personal-data-consent" in response.text
     assert "/legal/personal-data-consent/download" not in response.text
     assert "/legal/privacy-policy" in response.text
@@ -153,7 +229,7 @@ def test_server_rejects_outdated_document_and_resets_checkbox(
     assert response.status_code == 422
     assert "Документ согласия изменился" in response.text
     assert "checked" not in markup.inputs["personal_data_consent"]
-    assert markup.inputs["consent_version"]["value"] == CONSENT_VERSION
+    assert markup.inputs["consent_version"]["value"] == consent_document_hash()
     assert db_session.scalar(select(func.count()).select_from(Registration)) == 0
 
 
@@ -173,7 +249,7 @@ def test_new_registration_records_consent_and_exact_document(
     assert registration.personal_data_consent_at is not None
     accepted_at = registration.personal_data_consent_at.replace(tzinfo=UTC)
     assert before <= accepted_at <= after
-    assert registration.consent_document_version == CONSENT_VERSION
+    assert registration.consent_document_version == consent_document_hash()
     assert registration.consent_document_text == consent_document_text()
     if "team_name" in payload:
         assert (
@@ -202,33 +278,6 @@ def test_team_requires_separate_confirmation_of_member_consents(
     assert response.status_code == 422
     assert "Подтвердите получение согласий всех участников команды" in response.text
     assert db_session.scalar(select(func.count()).select_from(Registration)) == 0
-
-
-@pytest.mark.parametrize(
-    ("path", "heading"),
-    [
-        ("/legal/personal-data-consent", "Согласие на обработку персональных данных"),
-        ("/legal/privacy-policy", "Политика обработки персональных данных"),
-    ],
-)
-def test_legal_pages_contain_only_the_heading(
-    client: TestClient, path: str, heading: str
-) -> None:
-    response = client.get(path)
-    markup = ConsentMarkup()
-    markup.feed(response.text)
-
-    assert response.status_code == 200
-    assert " ".join(" ".join(markup.main_text).split()) == heading
-
-
-def test_old_consent_download_redirects_to_the_current_page(client: TestClient) -> None:
-    response = client.get(
-        "/legal/personal-data-consent/download", follow_redirects=False
-    )
-
-    assert response.status_code == 303
-    assert response.headers["location"].endswith("/legal/personal-data-consent")
 
 
 def test_consent_migration_preserves_legacy_applications() -> None:

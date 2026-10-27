@@ -384,7 +384,7 @@ class RegistrationAdmin(RussianModelView, model=Registration):
         Registration.members: "Участники",
         Registration.created_at: "Создана",
         Registration.personal_data_consent_at: "Согласие участника / капитана",
-        Registration.consent_document_version: "Версия документа согласия",
+        Registration.consent_document_version: "Идентификатор текста согласия",
         Registration.members_consents_confirmed_at: "Подтверждение капитана о согласиях участников",
     }
 

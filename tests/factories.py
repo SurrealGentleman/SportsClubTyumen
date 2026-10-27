@@ -8,7 +8,7 @@ from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.core.privacy import CONSENT_VERSION
+from app.core.privacy import consent_document_hash
 from app.core.security import get_password_hash
 from app.models import Admin, Competition, RegistrationType
 
@@ -85,7 +85,7 @@ def valid_payload(email: str = "student@study.utmn.ru") -> dict[str, str]:
         "group_name": "01",
         "phone": "+7 900 000-00-00",
         "personal_data_consent": "on",
-        "consent_version": CONSENT_VERSION,
+        "consent_version": consent_document_hash(),
     }
 
 
@@ -99,7 +99,7 @@ def team_payload(
     return {
         "team_name": team_name,
         "personal_data_consent": "on",
-        "consent_version": CONSENT_VERSION,
+        "consent_version": consent_document_hash(),
         "members_consents_confirmed": "on",
         "captain_name": "Иван Капитанов",
         "captain_email": captain_email,

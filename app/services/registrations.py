@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.privacy import consent_document_text
+from app.core.privacy import consent_document_hash, consent_document_text
 from app.models import (
     Competition,
     Registration,
@@ -26,6 +26,18 @@ class RegistrationError(Exception):
 
 class RegistrationTypeError(RegistrationError):
     message = "Для этого соревнования требуется командная заявка"
+
+
+class ConsentChangedError(RegistrationError):
+    message = "Документ согласия изменился. Прочитайте актуальный текст и подтвердите согласие заново."
+
+
+def accepted_consent_text(document_hash: str) -> str:
+    # Recheck after CAPTCHA and persist this exact snapshot, not a second read.
+    text = consent_document_text()
+    if consent_document_hash(text) != document_hash:
+        raise ConsentChangedError
+    return text
 
 
 class RegistrationClosedError(RegistrationError):
@@ -102,6 +114,7 @@ def create_individual_registration(
     registration_in: IndividualRegistrationCreate,
 ) -> Registration:
     ensure_individual_registration_available(competition)
+    accepted_text = accepted_consent_text(registration_in.consent_version)
 
     normalized_email = str(registration_in.university_email).lower()
     registered_emails = find_registered_emails(
@@ -120,7 +133,7 @@ def create_individual_registration(
         captain_phone=registration_in.phone,
         personal_data_consent_at=datetime.now(UTC),
         consent_document_version=registration_in.consent_version,
-        consent_document_text=consent_document_text(),
+        consent_document_text=accepted_text,
     )
     registration.members.append(
         RegistrationMember(
@@ -151,6 +164,7 @@ def create_team_registration(
     ensure_registration_available(competition)
 
     team_size = 1 + len(registration_in.members)
+    accepted_text = accepted_consent_text(registration_in.consent_version)
     min_team_size = competition.min_team_size
     max_team_size = competition.max_team_size
     assert min_team_size is not None and max_team_size is not None
@@ -199,7 +213,7 @@ def create_team_registration(
         captain_phone=registration_in.captain_phone,
         personal_data_consent_at=consent_accepted_at,
         consent_document_version=registration_in.consent_version,
-        consent_document_text=consent_document_text(),
+        consent_document_text=accepted_text,
         members_consents_confirmed_at=consent_accepted_at,
     )
     registration.members.append(

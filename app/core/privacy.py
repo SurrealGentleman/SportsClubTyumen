@@ -1,15 +1,25 @@
+from hashlib import sha256
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
-
-# Change the version whenever the consent text or operator details change.
-CONSENT_VERSION = "2026-10-20-placeholder-v2"
-CONSENT_DOCUMENT_TEMPLATE = "legal/documents/personal_data_consent_v2.html"
+DOCUMENTS_DIR = Path(__file__).resolve().parent.parent / "documents"
 
 
 def consent_document_text() -> str:
-    environment = Environment(
-        loader=FileSystemLoader(Path(__file__).parent.parent / "templates"),
-        autoescape=select_autoescape(["html"]),
+    return (
+        (DOCUMENTS_DIR / "personal_data_consent.txt")
+        .read_text(encoding="utf-8-sig")
+        .strip()
     )
-    return environment.get_template(CONSENT_DOCUMENT_TEMPLATE).render()
+
+
+def privacy_policy_text() -> str:
+    return (
+        (DOCUMENTS_DIR / "privacy_policy.txt").read_text(encoding="utf-8-sig").strip()
+    )
+
+
+def consent_document_hash(document_text: str | None = None) -> str:
+    """Identify the accepted text automatically; no manual versions to maintain."""
+    if document_text is None:
+        document_text = consent_document_text()
+    return sha256(document_text.encode("utf-8")).hexdigest()

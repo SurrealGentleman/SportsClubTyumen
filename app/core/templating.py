@@ -6,7 +6,6 @@ from pathlib import Path
 from starlette.templating import Jinja2Templates
 
 from app.core.branding import BRAND_ASSETS
-from app.core.privacy import CONSENT_DOCUMENT_TEMPLATE, CONSENT_VERSION
 from app.core.time import local_datetime
 from app.models.training import WEEKDAY_NAMES
 
@@ -46,5 +45,3 @@ templates.env.filters["date_ru"] = format_date
 templates.env.filters["datetime_ru"] = format_datetime
 templates.env.globals["weekday_names"] = WEEKDAY_NAMES
 templates.env.globals["brand_assets"] = BRAND_ASSETS
-templates.env.globals["consent_document_template"] = CONSENT_DOCUMENT_TEMPLATE
-templates.env.globals["consent_version"] = CONSENT_VERSION

@@ -3,7 +3,7 @@ from typing import Literal, Self
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.core.config import settings
-from app.core.privacy import CONSENT_VERSION
+from app.core.privacy import consent_document_hash
 
 
 def validate_email_domain(value: EmailStr) -> EmailStr:
@@ -48,7 +48,7 @@ class ConsentCreate(BaseModel):
     @field_validator("consent_version")
     @classmethod
     def validate_consent_version(cls, value: str) -> str:
-        if value != CONSENT_VERSION:
+        if value != consent_document_hash():
             raise ValueError(
                 "Документ согласия изменился. Прочитайте актуальную версию."
             )

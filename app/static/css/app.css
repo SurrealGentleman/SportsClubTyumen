@@ -637,6 +637,11 @@ a.feature-card:hover {
   line-height: 1.65;
 }
 
+.legal-document-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .legal-document h1 {
   font-size: clamp(1.75rem, 5vw, 2.5rem);
 }
@@ -644,14 +649,6 @@ a.feature-card:hover {
 .legal-document h2 {
   margin-top: 2rem;
   margin-bottom: 0.75rem;
-}
-
-.legal-operator dt {
-  margin-top: 0.75rem;
-}
-
-.legal-operator dd {
-  margin-left: 0;
 }
 
 .form-control {
