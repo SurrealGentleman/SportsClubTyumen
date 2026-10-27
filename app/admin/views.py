@@ -5,6 +5,7 @@ from sqlalchemy.orm import selectinload
 from sqladmin import ModelView, action
 from sqladmin.fields import SelectField
 from wtforms import Form
+from starlette.concurrency import run_in_threadpool
 
 from app.core.time import APP_TIMEZONE, local_datetime
 from app.models import (
@@ -292,24 +293,12 @@ class CompetitionAdmin(RussianModelView, model=Competition):
                 status_code=400,
             )
 
-        statement = (
-            select(Competition)
-            .options(
-                selectinload(Competition.registrations).selectinload(
-                    Registration.members
-                )
-            )
-            .where(Competition.id == int(competition_ids[0]))
-        )
-        with self.session_maker() as session:
-            competition = session.scalar(statement)
-            if competition is None:
-                return Response("Соревнование не найдено.", status_code=404)
-            output = build_competition_registrations_xlsx(competition)
-
-        filename = f"{competition.slug}-registrations.xlsx"
+        export = await run_in_threadpool(self._build_xlsx, int(competition_ids[0]))
+        if export is None:
+            return Response("Соревнование не найдено.", status_code=404)
+        filename, content = export
         return Response(
-            content=output.getvalue(),
+            content=content,
             media_type=(
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             ),
@@ -317,6 +306,24 @@ class CompetitionAdmin(RussianModelView, model=Competition):
                 "Content-Disposition": f'attachment; filename="{filename}"',
             },
         )
+
+    def _build_xlsx(self, competition_id: int) -> tuple[str, bytes] | None:
+        statement = (
+            select(Competition)
+            .options(
+                selectinload(Competition.registrations).selectinload(
+                    Registration.members
+                )
+            )
+            .where(Competition.id == competition_id)
+        )
+        with self.session_maker() as session:
+            competition = session.scalar(statement)
+            if competition is None:
+                return None
+            output = build_competition_registrations_xlsx(competition)
+
+            return f"{competition.slug}-registrations.xlsx", output.getvalue()
 
 
 class RegistrationAdmin(RussianModelView, model=Registration):

@@ -46,6 +46,7 @@ def create_app(
         docs_url=None,
         redoc_url=None,
     )
+    app.state.session_factory = session_maker
     setup_api_docs(app)
 
     app.mount("/static", StaticFiles(directory="app/static"), name="static")

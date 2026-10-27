@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Request, status
 from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
+from sqlalchemy.orm import Session, sessionmaker
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import FormData
 
-from app.db.dependencies import SessionDep
+from app.db.dependencies import SessionDep, SessionFactoryDep
 from app.core.config import settings
 from app.core.privacy import CONSENT_VERSION
 from app.core.templating import templates
@@ -138,10 +139,31 @@ def register_for_competition(
 async def submit_registration(
     slug: str,
     request: Request,
-    db: SessionDep,
+    session_factory: SessionFactoryDep,
 ) -> HTMLResponse:
-    competition = get_published_competition(db, slug)
+    competition = await run_in_threadpool(
+        _load_registration_competition, session_factory, slug
+    )
     form = await request.form()
+    return await run_in_threadpool(
+        _submit_registration, competition, request, form, session_factory
+    )
+
+
+def _load_registration_competition(
+    session_factory: sessionmaker[Session], slug: str
+) -> Competition:
+    # Only loaded column values leave this worker; the Session is closed here.
+    with session_factory() as db:
+        return get_published_competition(db, slug)
+
+
+def _submit_registration(
+    competition: Competition,
+    request: Request,
+    form: FormData,
+    session_factory: sessionmaker[Session],
+) -> HTMLResponse:
     is_team = competition.registration_type == RegistrationType.team
     form_data: dict[str, object] = (
         parse_team_form(form)
@@ -167,7 +189,9 @@ async def submit_registration(
     tokens = form.getlist("smart-token")
     captcha_token = str(tokens[0]) if len(tokens) == 1 else ""
     try:
-        await run_in_threadpool(verify_smartcaptcha, captcha_token, request.url.netloc)
+        # This whole function is already running in a worker. No DB connection
+        # is held while waiting for the external CAPTCHA service.
+        verify_smartcaptcha(captcha_token, request.url.netloc)
     except CaptchaError as exc:
         return templates.TemplateResponse(
             request,
@@ -181,17 +205,29 @@ async def submit_registration(
         )
 
     try:
-        if isinstance(registration_in, TeamRegistrationCreate):
-            registration = registration_service.create_team_registration(
-                db,
-                competition=competition,
-                registration_in=registration_in,
-            )
-        else:
-            registration = registration_service.create_individual_registration(
-                db,
-                competition=competition,
-                registration_in=registration_in,
+        with session_factory() as db:
+            # Reload after CAPTCHA: publication and registration settings may
+            # have changed while the external service was being checked.
+            current_competition = get_published_competition(db, competition.slug)
+            if isinstance(registration_in, TeamRegistrationCreate):
+                registration = registration_service.create_team_registration(
+                    db,
+                    competition=current_competition,
+                    registration_in=registration_in,
+                )
+            else:
+                registration = registration_service.create_individual_registration(
+                    db,
+                    competition=current_competition,
+                    registration_in=registration_in,
+                )
+            # Render inside the worker/session so template attribute access
+            # cannot perform a lazy query on the event-loop thread.
+            return templates.TemplateResponse(
+                request,
+                "registration_success.html",
+                {"competition": current_competition, "registration": registration},
+                status_code=status.HTTP_201_CREATED,
             )
     except registration_service.RegistrationError as exc:
         return templates.TemplateResponse(
@@ -204,10 +240,3 @@ async def submit_registration(
             ),
             status_code=status.HTTP_409_CONFLICT,
         )
-
-    return templates.TemplateResponse(
-        request,
-        "registration_success.html",
-        {"competition": competition, "registration": registration},
-        status_code=status.HTTP_201_CREATED,
-    )

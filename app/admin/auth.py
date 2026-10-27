@@ -59,28 +59,32 @@ class AdminAuthentication(AuthenticationBackend):
                 headers={"Retry-After": str(retry_after)},
             )
 
+        admin_id = await run_in_threadpool(self._verify_credentials, login, password)
+        if admin_id is None:
+            return False
+
+        request.session.clear()
+        request.session["user_id"] = admin_id
+        return True
+
+    def _verify_credentials(self, login: str, password: str) -> int | None:
         with self.session_maker() as session:
-            admin = session.scalar(
-                select(Admin).where(
+            admin = session.execute(
+                select(Admin.id, Admin.password_hash).where(
                     Admin.login == login,
                     Admin.is_active.is_(True),
                 )
-            )
+            ).first()
 
         password_hash = admin.password_hash if admin else self._dummy_password_hash
         try:
-            password_is_valid = await run_in_threadpool(
-                verify_password, password, password_hash
-            )
+            password_is_valid = verify_password(password, password_hash)
         except PwdlibError:
             password_is_valid = False
 
         if admin is None or not password_is_valid:
-            return False
-
-        request.session.clear()
-        request.session["user_id"] = admin.id
-        return True
+            return None
+        return admin.id
 
     async def logout(self, request: Request) -> bool:
         request.session.clear()
@@ -91,6 +95,9 @@ class AdminAuthentication(AuthenticationBackend):
         if not isinstance(admin_id, int):
             return False
 
+        return await run_in_threadpool(self._is_active_admin, admin_id)
+
+    def _is_active_admin(self, admin_id: int) -> bool:
         with self.session_maker() as session:
             admin = session.scalar(
                 select(Admin.id).where(

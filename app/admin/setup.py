@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqladmin import Admin as SQLAdmin, I18nConfig
 from sqladmin.authentication import login_required
 from starlette.exceptions import HTTPException
+from starlette.concurrency import run_in_threadpool
 
 from app.admin.auth import AdminAuthentication
 from app.admin.csrf import admin_csrf_token
@@ -32,6 +33,18 @@ class SportsClubAdmin(SQLAdmin):
 
     @login_required
     async def index(self, request: Request):  # type: ignore[no-untyped-def]
+        dashboard = await run_in_threadpool(self._get_dashboard_counts)
+        return await self.templates.TemplateResponse(
+            request,
+            "sqladmin/index.html",
+            {
+                "title": "Панель управления",
+                "subtitle": "Спортивный клуб ТюмГУ",
+                "dashboard": dashboard,
+            },
+        )
+
+    def _get_dashboard_counts(self) -> dict[str, int]:
         with self.session_maker() as session:
             dashboard = {
                 "sports": session.scalar(select(func.count()).select_from(Sport)) or 0,
@@ -52,15 +65,7 @@ class SportsClubAdmin(SQLAdmin):
                 )
                 or 0,
             }
-        return await self.templates.TemplateResponse(
-            request,
-            "sqladmin/index.html",
-            {
-                "title": "Панель управления",
-                "subtitle": "Спортивный клуб ТюмГУ",
-                "dashboard": dashboard,
-            },
-        )
+        return dashboard
 
 
 def setup_admin(
