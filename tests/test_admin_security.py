@@ -6,18 +6,17 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.admin.rate_limit import LoginRateLimiter
-from app.core.security import get_password_hash
 from app.db.base import Base
-from app.models import Admin, LoginAttempt, Sport
+from app.models import LoginAttempt, Sport
 from tests.admin_helpers import admin_token
+from tests.factories import create_admin
 
 PASSWORD = "test-admin-password"
 
 
 @pytest.fixture()
 def authenticated(client: TestClient, db_session: Session) -> TestClient:
-    db_session.add(Admin(login="admin", password_hash=get_password_hash(PASSWORD)))
-    db_session.commit()
+    create_admin(db_session, password=PASSWORD)
     response = client.post(
         "/admin/login",
         data={
@@ -106,8 +105,7 @@ def test_other_sessions_token_is_rejected(authenticated: TestClient, test_app) -
 def test_login_rotates_pre_authentication_token(
     client: TestClient, db_session: Session
 ):
-    db_session.add(Admin(login="admin", password_hash=get_password_hash(PASSWORD)))
-    db_session.commit()
+    create_admin(db_session, password=PASSWORD)
     old = admin_token(client)
     client.post(
         "/admin/login",
@@ -189,8 +187,7 @@ def test_login_account_limit_applies_to_new_sessions_and_correct_password(
     db_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    db_session.add(Admin(login="admin", password_hash=get_password_hash(PASSWORD)))
-    db_session.commit()
+    create_admin(db_session, password=PASSWORD)
     calls = []
     monkeypatch.setattr(
         "app.admin.auth.verify_password", lambda *args: calls.append(args) or False

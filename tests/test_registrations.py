@@ -1,47 +1,11 @@
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.privacy import CONSENT_VERSION
-from app.models import Competition, Registration, RegistrationMember, RegistrationType
-
-
-def create_individual_competition(
-    db_session: Session,
-    *,
-    slug: str = "individual-cup",
-    is_registration_open: bool = True,
-    deadline: datetime | None = None,
-) -> Competition:
-    competition = Competition(
-        title="Личный турнир",
-        slug=slug,
-        location="ТюмГУ",
-        start_date=date.today() + timedelta(days=20),
-        end_date=date.today() + timedelta(days=20),
-        registration_deadline=deadline or datetime.now(UTC) + timedelta(days=10),
-        registration_type=RegistrationType.individual,
-        is_registration_open=is_registration_open,
-        is_published=True,
-    )
-    db_session.add(competition)
-    db_session.commit()
-    return competition
-
-
-def valid_payload(email: str = "student@study.utmn.ru") -> dict[str, str]:
-    return {
-        "full_name": "Иван Иванов",
-        "university_email": email,
-        "institute": "ИМиКН",
-        "course": "2",
-        "group_name": "01",
-        "phone": "+7 900 000-00-00",
-        "personal_data_consent": "on",
-        "consent_version": CONSENT_VERSION,
-    }
+from app.models import Registration, RegistrationMember
+from tests.factories import create_individual_competition, valid_payload
 
 
 def test_individual_registration_saves_registration_and_member(

@@ -5,27 +5,15 @@ from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 from tests.admin_helpers import admin_login
+from tests.factories import create_admin
 
-from app.core.security import get_password_hash
 from app.models import (
-    Admin,
     Competition,
     Registration,
     RegistrationMember,
     RegistrationType,
 )
 from app.services.excel_export import EXPORT_HEADERS
-
-
-def create_admin(db_session: Session) -> None:
-    db_session.add(
-        Admin(
-            login="admin",
-            password_hash=get_password_hash("strong-admin-password"),
-            is_active=True,
-        )
-    )
-    db_session.commit()
 
 
 def login(client: TestClient) -> None:

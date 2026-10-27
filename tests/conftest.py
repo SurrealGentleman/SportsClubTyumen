@@ -20,7 +20,6 @@ os.environ["SMARTCAPTCHA_CLIENT_KEY"] = ""
 os.environ["SMARTCAPTCHA_SERVER_KEY"] = ""
 os.environ["SMARTCAPTCHA_ALLOWED_HOSTS"] = "testserver"
 
-from app.db.dependencies import get_db
 from app.db.base import Base
 from app.main import create_app
 
@@ -68,11 +67,6 @@ def test_app(
         session_maker=testing_session_maker,
     )
 
-    def override_get_db() -> Generator[Session, None, None]:
-        with testing_session_maker() as session:
-            yield session
-
-    app.dependency_overrides[get_db] = override_get_db
     yield app
     app.dependency_overrides.clear()
 

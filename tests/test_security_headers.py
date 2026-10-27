@@ -9,8 +9,7 @@ from app.core.config import settings
 from app.db.dependencies import get_db
 from app.main import create_app
 from tests.admin_helpers import admin_login
-from tests.test_admin import create_admin
-from tests.test_registrations import create_individual_competition
+from tests.factories import create_admin, create_individual_competition
 
 
 class ScriptParser(HTMLParser):

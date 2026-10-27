@@ -1,31 +1,19 @@
 import pytest
 from tests.admin_helpers import admin_login
+from tests.factories import create_admin
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from types import SimpleNamespace
 
 from app.admin.views import CompetitionAdmin, CompetitionAdminForm, RussianModelView
-from app.core.security import get_password_hash
 from app.models import (
-    Admin,
     Competition,
     RegistrationType,
     Sport,
     Training,
     TrainingGroup,
 )
-
-
-def create_admin(db_session: Session, *, is_active: bool = True) -> Admin:
-    admin = Admin(
-        login="admin",
-        password_hash=get_password_hash("strong-admin-password"),
-        is_active=is_active,
-    )
-    db_session.add(admin)
-    db_session.commit()
-    return admin
 
 
 @pytest.fixture()

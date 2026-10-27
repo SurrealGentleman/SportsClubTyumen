@@ -10,8 +10,12 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models import Registration
 from app.services import captcha
-from tests.test_registrations import create_individual_competition, valid_payload
-from tests.test_team_registrations import create_team_competition, team_payload
+from tests.factories import (
+    create_individual_competition,
+    create_team_competition,
+    valid_payload,
+    team_payload,
+)
 
 
 class ValidationResponse:

@@ -17,8 +17,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from tests.admin_helpers import admin_login
-from tests.test_admin import create_admin
-from tests.test_team_registrations import create_team_competition
+from tests.factories import create_admin, create_team_competition
 
 
 pytestmark = pytest.mark.skipif(

@@ -13,9 +13,13 @@ from app.db.dependencies import get_session_factory
 from app.models import Competition, Registration
 from app.main import create_app
 from tests.admin_helpers import admin_login
-from tests.test_admin import create_admin
-from tests.test_registrations import create_individual_competition, valid_payload
-from tests.test_team_registrations import create_team_competition, team_payload
+from tests.factories import (
+    create_admin,
+    create_individual_competition,
+    create_team_competition,
+    valid_payload,
+    team_payload,
+)
 
 
 def assert_no_event_loop():
