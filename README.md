@@ -42,6 +42,12 @@ poetry run uvicorn app.main:app --reload
 
 Health endpoint: `GET http://localhost:8000/api/v1/health`.
 
+JSON-маршруты находятся в `app/api/health.py` и объединяются в
+`app/api/router.py`. Префикс `/api/v1` задаётся при подключении роутера в
+`app/main.py`, без дополнительных папок версий. Общая зависимость сессии БД
+(`get_db` и `SessionDep`) находится в `app/db/dependencies.py` и используется
+как публичными страницами, так и тестами.
+
 ## Публичные страницы
 
 - `/` — главная страница клуба;
@@ -53,6 +59,13 @@ Health endpoint: `GET http://localhost:8000/api/v1/health`.
 
 Страницы формируются на сервере через Jinja2, используют Bootstrap 5 и получают
 расписание и соревнования из базы данных. Наполнение создаётся через `/admin`.
+
+Публичные маршруты разделены в `app/routers/` на `home.py`, `schedule.py`,
+`competitions.py`, `registrations.py` и `legal.py`; общий роутер собирается в
+`app/routers/__init__.py`. Общий поиск соревнований и проверки для отображения
+находятся в `_competition_helpers.py`. Настройка Jinja2, фильтры дат и глобальные
+переменные шаблонов централизованы в `app/core/templating.py` и не зависят от
+регистрации маршрутов. Бизнес-логика заявок остаётся в `app/services/registrations.py`.
 
 ## Административная панель
 

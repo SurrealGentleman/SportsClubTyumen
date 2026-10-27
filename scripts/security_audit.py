@@ -14,7 +14,7 @@ from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.deps import get_db
+from app.db.dependencies import get_db
 from app.core.config import settings
 from app.core.privacy import CONSENT_VERSION
 from app.core.security import get_password_hash

@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
 from app.core.config import settings
-from app.api.deps import get_db
+from app.db.dependencies import get_db
 from app.main import create_app
 from tests.admin_helpers import admin_login
 from tests.test_admin import create_admin

@@ -1,81 +1,20 @@
-from datetime import UTC, date, datetime
-from pathlib import Path
-
-from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Request, status
+from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
-from starlette.datastructures import FormData
 from starlette.concurrency import run_in_threadpool
-from starlette.templating import Jinja2Templates
+from starlette.datastructures import FormData
 
-from app.api.deps import SessionDep
-from app.core.branding import BRAND_ASSETS
+from app.db.dependencies import SessionDep
 from app.core.config import settings
-from app.core.privacy import CONSENT_DOCUMENT_TEMPLATE, CONSENT_VERSION
-from app.core.time import local_datetime
-from app.models import Competition, RegistrationType, Sport
-from app.models.training import WEEKDAY_NAMES
+from app.core.privacy import CONSENT_VERSION
+from app.core.templating import templates
+from app.models import Competition, RegistrationType
+from app.routers._competition_helpers import get_published_competition
 from app.schemas import IndividualRegistrationCreate, TeamRegistrationCreate
 from app.services import registrations as registration_service
 from app.services.captcha import CaptchaError, verify_smartcaptcha
 
 router = APIRouter(include_in_schema=False)
-templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
-
-MONTH_NAMES = (
-    "",
-    "января",
-    "февраля",
-    "марта",
-    "апреля",
-    "мая",
-    "июня",
-    "июля",
-    "августа",
-    "сентября",
-    "октября",
-    "ноября",
-    "декабря",
-)
-
-
-def format_date(value: date | datetime) -> str:
-    if isinstance(value, datetime):
-        value = local_datetime(value)
-    return f"{value.day} {MONTH_NAMES[value.month]} {value.year}"
-
-
-def format_datetime(value: datetime) -> str:
-    value = local_datetime(value)
-    return f"{format_date(value)}, {value:%H:%M}"
-
-
-def registration_is_open(competition: Competition) -> bool:
-    deadline = competition.registration_deadline
-    if deadline.tzinfo is None:
-        deadline = deadline.replace(tzinfo=UTC)
-    return (
-        competition.is_registration_open
-        and datetime.now(UTC) <= deadline
-        and (
-            competition.registration_type != RegistrationType.team
-            or competition.has_valid_team_size
-        )
-    )
-
-
-def get_published_competition(db: Session, slug: str) -> Competition:
-    competition = db.scalar(
-        select(Competition).where(
-            Competition.slug == slug,
-            Competition.is_published.is_(True),
-        )
-    )
-    if competition is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    return competition
 
 
 def registration_validation_errors(exc: ValidationError) -> dict[str, str]:
@@ -160,120 +99,6 @@ def registration_form_context(
         if settings.captcha_ready
         else "",
     }
-
-
-templates.env.filters["date_ru"] = format_date
-templates.env.filters["datetime_ru"] = format_datetime
-templates.env.globals["weekday_names"] = WEEKDAY_NAMES
-templates.env.globals["brand_assets"] = BRAND_ASSETS
-templates.env.globals["consent_document_template"] = CONSENT_DOCUMENT_TEMPLATE
-templates.env.globals["consent_version"] = CONSENT_VERSION
-
-
-@router.get(
-    "/legal/personal-data-consent",
-    response_class=HTMLResponse,
-    name="personal_data_consent",
-)
-def personal_data_consent(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "legal/personal_data_consent.html")
-
-
-@router.get(
-    "/legal/personal-data-consent/download",
-    response_class=HTMLResponse,
-    name="download_personal_data_consent",
-)
-def download_personal_data_consent(request: Request) -> RedirectResponse:
-    return RedirectResponse(
-        request.url_for("personal_data_consent"), status_code=status.HTTP_303_SEE_OTHER
-    )
-
-
-@router.get(
-    "/legal/privacy-policy",
-    response_class=HTMLResponse,
-    name="privacy_policy",
-)
-def privacy_policy(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "legal/privacy_policy.html")
-
-
-@router.get("/", response_class=HTMLResponse, name="home")
-def home(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "index.html")
-
-
-@router.get("/schedule", response_class=HTMLResponse, name="schedule")
-def schedule(request: Request, db: SessionDep) -> HTMLResponse:
-    sports = db.scalars(
-        select(Sport).where(Sport.is_active.is_(True)).order_by(Sport.name)
-    ).all()
-    return templates.TemplateResponse(
-        request,
-        "schedule.html",
-        {"sports": sports},
-    )
-
-
-@router.get("/sports/{slug}", response_class=HTMLResponse, name="sport_detail")
-def sport_detail(slug: str, request: Request, db: SessionDep) -> HTMLResponse:
-    sport = db.scalar(
-        select(Sport)
-        .options(selectinload(Sport.trainings))
-        .where(Sport.slug == slug, Sport.is_active.is_(True))
-    )
-    if sport is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
-    trainings = sorted(
-        (training for training in sport.trainings if training.is_active),
-        key=lambda training: (
-            training.group_name.value.casefold(),
-            training.weekday,
-            training.start_time,
-        ),
-    )
-    return templates.TemplateResponse(
-        request,
-        "sport.html",
-        {"sport": sport, "trainings": trainings},
-    )
-
-
-@router.get("/competitions", response_class=HTMLResponse, name="competitions")
-def competitions(request: Request, db: SessionDep) -> HTMLResponse:
-    items = db.scalars(
-        select(Competition)
-        .where(Competition.is_published.is_(True))
-        .order_by(Competition.start_date, Competition.title)
-    ).all()
-    return templates.TemplateResponse(
-        request,
-        "competitions.html",
-        {
-            "competitions": items,
-            "registration_is_open": registration_is_open,
-        },
-    )
-
-
-@router.get(
-    "/competitions/{slug}",
-    response_class=HTMLResponse,
-    name="competition_detail",
-)
-def competition_detail(slug: str, request: Request, db: SessionDep) -> HTMLResponse:
-    competition = get_published_competition(db, slug)
-
-    return templates.TemplateResponse(
-        request,
-        "competition.html",
-        {
-            "competition": competition,
-            "registration_open": registration_is_open(competition),
-        },
-    )
 
 
 @router.get(

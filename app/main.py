@@ -9,16 +9,16 @@ from urllib.parse import urlsplit
 
 from app.admin.setup import setup_admin
 from app.admin.rate_limit import LoginRateLimiter
-from app.api.v1.router import router as api_v1_router
+from app.api.router import router as api_router
 from app.core.config import settings
 from app.core.error_pages import setup_error_handlers
 from app.core.http_security import RequestLimitMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.api_docs import setup_api_docs
+from app.core.templating import templates
 from app.db.session import SessionLocal, engine
 from app.models import RequestLimit
-from app.routers.pages import router as pages_router
-from app.routers.pages import templates
+from app.routers import router as public_router
 
 
 class SecureFastAPI(FastAPI):
@@ -49,8 +49,8 @@ def create_app(
     setup_api_docs(app)
 
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
-    app.include_router(pages_router)
-    app.include_router(api_v1_router, prefix="/api/v1")
+    app.include_router(public_router)
+    app.include_router(api_router, prefix="/api/v1")
     setup_error_handlers(app, templates)
     setup_admin(app, db_engine=db_engine, session_maker=session_maker)
 

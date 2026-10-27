@@ -4,7 +4,7 @@ from pydantic import SecretStr
 from sqlalchemy import select
 
 from app.admin.rate_limit import LoginRateLimiter
-from app.api.deps import get_db
+from app.db.dependencies import get_db
 from app.core.config import Settings, settings
 from app.main import create_app
 from app.models import LoginAttempt, RequestLimit
