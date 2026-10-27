@@ -72,7 +72,7 @@ def setup_admin(
     authentication_backend = AdminAuthentication(
         secret_key=settings.secret_key,
         session_maker=session_maker,
-        https_only=settings.session_cookie_secure,
+        https_only=settings.secure_cookies,
     )
     admin = SportsClubAdmin(
         app=app,

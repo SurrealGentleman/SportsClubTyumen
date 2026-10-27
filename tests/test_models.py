@@ -20,6 +20,7 @@ from app.models import (
 def test_metadata_contains_stage_one_tables() -> None:
     assert set(Base.metadata.tables) == {
         "admin_login_attempts",
+        "request_limits",
         "admins",
         "competitions",
         "registration_members",
