@@ -2,6 +2,7 @@
   <div class="registration-captcha mt-4">
     {% if captcha_ready %}
       <div class="smart-captcha" data-sitekey="{{ captcha_client_key }}" data-hl="ru"></div>
+      <script src="{{ url_for('static', path='js/captcha-fit.js') }}" defer></script>
       <script src="https://smartcaptcha.cloud.yandex.ru/captcha.js" defer></script>
       <noscript><p class="text-danger">Для проверки «Я не робот» включите JavaScript в браузере.</p></noscript>
     {% else %}

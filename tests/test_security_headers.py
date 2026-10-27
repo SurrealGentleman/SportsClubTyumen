@@ -79,6 +79,17 @@ def test_csp_profiles_do_not_share_external_script_permissions(client):
     assert "script-src 'self';" in admin
     assert "jsdelivr" not in admin and "smartcaptcha" not in admin
     assert "smartcaptcha" not in public
+    connections = public.split("connect-src ", 1)[1].split(";", 1)[0].split()
+    assert (
+        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js.map"
+        in connections
+    )
+    assert (
+        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css.map"
+        in connections
+    )
+    assert "https://cdn.jsdelivr.net" not in connections
+    assert ".map" not in admin
 
 
 def test_admin_current_forms_have_no_inline_scripts_or_event_handlers(

@@ -627,6 +627,7 @@ a.feature-card:hover {
 }
 
 .registration-captcha .smart-captcha {
+  min-width: 300px;
   min-height: 100px;
 }
 

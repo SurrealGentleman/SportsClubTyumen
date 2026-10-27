@@ -81,6 +81,7 @@ def test_captcha_widget_contains_only_the_public_key(
 
     assert response.status_code == 200
     assert "https://smartcaptcha.cloud.yandex.ru/captcha.js" in response.text
+    assert "/static/js/captcha-fit.js" in response.text
     assert 'data-sitekey="ysc1_public-test-key"' in response.text
     assert "ysc2_private-test-key" not in response.text
 

@@ -42,6 +42,8 @@ def content_security_policy(path: str, nonce: str, *, captcha: bool) -> str:
     else:
         scripts += f" {BOOTSTRAP_JS}"
         styles += f" {BOOTSTRAP_CSS}"
+        # DevTools fetches source maps through connect-src, not script/style-src.
+        connections += f" {BOOTSTRAP_JS}.map {BOOTSTRAP_CSS}.map"
         if captcha:
             scripts += f" {CAPTCHA_ORIGINS}"
             connections += f" {CAPTCHA_ORIGINS}"

@@ -32,6 +32,13 @@ document.addEventListener('securitypolicyviolation', event => {
 });
 document.addEventListener('DOMContentLoaded', () => {
   const result = {inlineBlocked: !window.__cspCanary};
+  const mockWidget = document.querySelector('[data-captcha-layout-probe] .smart-captcha');
+  if (mockWidget) {
+    // Reproduce an asynchronously inserted, fixed-width provider iframe.
+    const frame = document.createElement('iframe');
+    frame.width = '300'; frame.height = '100'; frame.style.border = '0';
+    mockWidget.append(frame);
+  }
   if (location.pathname.startsWith('/admin/')) {
     result.jquery = !!window.jQuery;
     result.tabler = !!window.tabler;
@@ -56,6 +63,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   setTimeout(() => {
+    if (mockWidget) {
+      const outer = mockWidget.parentElement.getBoundingClientRect();
+      const frame = mockWidget.querySelector('iframe').getBoundingClientRect();
+      result.captchaFits = frame.left >= outer.left - 1 && frame.right <= outer.right + 1;
+      result.captchaVisible = frame.width > 200 && frame.height > 50;
+    }
     if (location.pathname === '/redoc') {
       const text = document.querySelector('redoc')?.textContent || '';
       result.redoc = text.includes('Спортивный клуб');
@@ -81,7 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
         "/redoc",
     ],
 )
-def test_csp_in_installed_chrome(path, test_app, db_session, tmp_path):
+def test_csp_in_installed_chrome(
+    path, test_app, db_session, tmp_path, captcha_width=None
+):
     chrome = Path("C:/Program Files/Google/Chrome/Application/chrome.exe")
     if not chrome.exists():
         pytest.skip("Installed Chrome not found")
@@ -102,6 +117,16 @@ def test_csp_in_installed_chrome(path, test_app, db_session, tmp_path):
             response = self.server.client.get(self.path, follow_redirects=False)
             body = response.content
             if "text/html" in response.headers.get("content-type", ""):
+                if captcha_width:
+                    mock = (
+                        f'<div class="registration-captcha" data-captcha-layout-probe style="width:{captcha_width}px">'
+                        '<div class="smart-captcha"></div></div>'
+                        '<script src="/static/js/captcha-fit.js" defer></script>'
+                    ).encode()
+                    body = body.replace(
+                        b'<div class="form-submit-row">',
+                        mock + b'<div class="form-submit-row">',
+                    )
                 body = body.replace(
                     b"<head>", b'<head><script src="/__csp_probe.js"></script>'
                 )
@@ -164,3 +189,14 @@ def test_csp_in_installed_chrome(path, test_app, db_session, tmp_path):
     unexpected = [v for v in violations if v["blocked"] != "inline"]
     assert not unexpected, unexpected
     assert result and all(result.values()), result
+
+
+@pytest.mark.parametrize("captcha_width", [250, 290])
+def test_captcha_fits_narrow_container(test_app, db_session, tmp_path, captcha_width):
+    test_csp_in_installed_chrome(
+        "/competitions/team-cup/register",
+        test_app,
+        db_session,
+        tmp_path,
+        captcha_width=captcha_width,
+    )
