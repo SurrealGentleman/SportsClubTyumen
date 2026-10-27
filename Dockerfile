@@ -17,6 +17,10 @@ RUN poetry install --only main --no-root
 COPY alembic.ini ./
 COPY app ./app
 COPY migrations ./migrations
+# Offline audit needs dev dependencies; only deployment diagnostics ship here.
+COPY scripts/check_deployment.py ./scripts/check_deployment.py
+
+USER 10001:10001
 
 EXPOSE 8000
 

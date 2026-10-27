@@ -45,7 +45,14 @@ class Settings(BaseSettings):
     def validate_production(self) -> None:
         if not self.https_deployment:
             return
-        url = urlsplit(self.external_url)
+        invalid_url_message = (
+            "PUBLIC_BASE_URL должен содержать HTTPS-адрес сайта без пути."
+        )
+        try:
+            url = urlsplit(self.external_url)
+        except ValueError:
+            # urllib errors can contain the whole URL, including credentials.
+            raise ValueError(invalid_url_message) from None
         if (
             url.scheme != "https"
             or not url.hostname
@@ -55,9 +62,7 @@ class Settings(BaseSettings):
             or url.query
             or url.fragment
         ):
-            raise ValueError(
-                "PUBLIC_BASE_URL должен содержать HTTPS-адрес сайта без пути."
-            )
+            raise ValueError(invalid_url_message)
         if not self.production:
             return
         if self.app_debug or self.database_echo:

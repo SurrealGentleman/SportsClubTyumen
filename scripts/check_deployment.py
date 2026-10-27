@@ -2,10 +2,30 @@
 
 import json
 
-from app.core.config import settings
+from pydantic import ValidationError
 
 
 def main() -> int:
+    # Settings are constructed during import. Catch parsing failures as well as
+    # production policy errors without exposing input values in a traceback.
+    try:
+        from app.core.config import settings
+    except ValidationError as exc:
+        print(
+            json.dumps(
+                {
+                    "configuration_error": "Некорректные переменные окружения.",
+                    "invalid_fields": [
+                        ".".join(str(part) for part in error["loc"])
+                        for error in exc.errors(include_input=False, include_url=False)
+                    ],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 1
+
     checks = {
         "production": settings.production,
         "https_enabled": settings.https_deployment,
@@ -15,6 +35,11 @@ def main() -> int:
         "captcha_keys_and_hosts_present": settings.captcha_ready,
         "request_limit_per_minute": settings.request_limit_per_minute,
         "registration_limit_per_minute": settings.registration_limit_per_minute,
+        "admin_login_account_limit": settings.admin_login_account_limit,
+        "admin_login_ip_limit": settings.admin_login_ip_limit,
+        "admin_login_window_seconds": settings.admin_login_window_seconds,
+        "csp_enforced": not settings.csp_report_only,
+        "captcha_csp_enforced": not settings.csp_captcha_report_only,
     }
     try:
         settings.validate_production()
