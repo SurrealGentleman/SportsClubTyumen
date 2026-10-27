@@ -614,6 +614,45 @@ a.feature-card:hover {
   font-weight: 700;
 }
 
+.registration-consent {
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.registration-consent .form-check-input:checked {
+  border-color: var(--brand-blue-dark);
+  background-color: var(--brand-blue-dark);
+}
+
+.registration-captcha .smart-captcha {
+  min-height: 100px;
+}
+
+.legal-document {
+  max-width: 900px;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+
+.legal-document h1 {
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+}
+
+.legal-document h2 {
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.legal-operator dt {
+  margin-top: 0.75rem;
+}
+
+.legal-operator dd {
+  margin-left: 0;
+}
+
 .form-control {
   min-height: 48px;
   border-color: #cbdbe6;

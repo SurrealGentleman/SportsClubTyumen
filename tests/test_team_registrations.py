@@ -1,9 +1,10 @@
 from datetime import UTC, date, datetime, timedelta
 
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from app.core.privacy import CONSENT_VERSION
 from app.models import Competition, Registration, RegistrationMember, RegistrationType
 
 
@@ -40,6 +41,9 @@ def team_payload(
     count = len(member_emails)
     return {
         "team_name": team_name,
+        "personal_data_consent": "on",
+        "consent_version": CONSENT_VERSION,
+        "members_consents_confirmed": "on",
         "captain_name": "Иван Капитанов",
         "captain_email": captain_email,
         "captain_phone": "+7 900 000-00-00",
@@ -206,3 +210,39 @@ def test_team_name_must_be_unique_within_competition(
     assert first_response.status_code == 201
     assert second_response.status_code == 409
     assert "Команда с таким названием уже зарегистрирована" in second_response.text
+
+
+def test_legacy_competition_without_limits_shows_configuration_message(
+    client: TestClient, db_session: Session
+) -> None:
+    competition = create_team_competition(db_session)
+    # Simulate a legacy row which passed the former CHECK constraint.
+    db_session.execute(text("PRAGMA ignore_check_constraints = ON"))
+    db_session.execute(
+        text(
+            "UPDATE competitions SET min_team_size = NULL, max_team_size = NULL WHERE id = :id"
+        ),
+        {"id": competition.id},
+    )
+    db_session.commit()
+    db_session.execute(text("PRAGMA ignore_check_constraints = OFF"))
+    db_session.expire_all()
+
+    detail_response = client.get("/competitions/team-cup")
+    form_response = client.get("/competitions/team-cup/register")
+    submit_response = client.post(
+        "/competitions/team-cup/register",
+        data=team_payload(["member1@study.utmn.ru", "member2@study.utmn.ru"]),
+    )
+
+    assert detail_response.status_code == 200
+    assert "Уточняется организатором" in detail_response.text
+    assert "None" not in detail_response.text
+    assert form_response.status_code == 409
+    assert "допустимый размер команды" in form_response.text
+    assert "None" not in form_response.text
+    assert 'name="team_name"' not in form_response.text
+    assert submit_response.status_code == 409
+    assert "допустимый размер команды" in submit_response.text
+    assert "не более 1" not in submit_response.text
+    assert db_session.scalar(select(func.count()).select_from(Registration)) == 0

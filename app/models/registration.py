@@ -9,6 +9,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     String,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -33,6 +34,14 @@ class Registration(Base):
     captain_name: Mapped[str] = mapped_column(String(255), nullable=False)
     captain_email: Mapped[str] = mapped_column(String(320), nullable=False)
     captain_phone: Mapped[str] = mapped_column(String(50), nullable=False)
+    personal_data_consent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    consent_document_version: Mapped[str | None] = mapped_column(String(64))
+    consent_document_text: Mapped[str | None] = mapped_column(Text)
+    members_consents_confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

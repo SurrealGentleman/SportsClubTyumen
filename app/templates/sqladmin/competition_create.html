@@ -1,0 +1,6 @@
+{% extends "sqladmin/create.html" %}
+
+{% block tail %}
+  {{ super() }}
+  <script src="{{ url_for('static', path='js/competition-form.js') }}" defer></script>
+{% endblock %}

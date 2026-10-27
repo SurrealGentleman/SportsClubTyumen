@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Согласие на обработку персональных данных — {{ consent_version }}</title>
+    <style>
+      body { max-width: 850px; margin: 2rem auto; padding: 0 1rem; font-family: Arial, sans-serif; line-height: 1.6; }
+      h1 { font-size: 1.8rem; } h2 { margin-top: 1.5rem; font-size: 1.2rem; }
+      dt { font-weight: bold; } dd { margin: 0 0 1rem; overflow-wrap: anywhere; }
+      .legal-draft { padding: 1rem; border: 1px solid #856404; }
+      @media print { body { margin: 0; max-width: none; } h2 { break-after: avoid; } }
+    </style>
+  </head>
+  <body>
+    <h1>Согласие на обработку персональных данных</h1>
+    <p>ССК «Ладья». Версия {{ consent_version }}.</p>
+    {% include consent_document_template %}
+  </body>
+</html>

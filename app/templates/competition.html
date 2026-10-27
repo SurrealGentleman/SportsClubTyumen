@@ -29,7 +29,7 @@
               <div><dt>Дедлайн</dt><dd>{{ competition.registration_deadline|datetime_ru }}</dd></div>
               <div><dt>Формат</dt><dd>{{ "Командный" if competition.registration_type.value == "team" else "Индивидуальный" }}</dd></div>
               {% if competition.registration_type.value == "team" %}
-                <div><dt>Размер команды</dt><dd>от {{ competition.min_team_size }} до {{ competition.max_team_size }} участников</dd></div>
+                <div><dt>Размер команды</dt><dd>{% if competition.has_valid_team_size %}от {{ competition.min_team_size }} до {{ competition.max_team_size }} участников{% else %}Уточняется организатором{% endif %}</dd></div>
               {% endif %}
             </dl>
           </article>
@@ -46,6 +46,10 @@
                 <p>Капитан заполняет данные команды и добавляет всех участников.</p>
                 <a class="btn btn-primary w-100" href="{{ url_for('register_for_competition', slug=competition.slug) }}">Записаться командой</a>
               {% endif %}
+            {% elif competition.registration_type.value == 'team' and not competition.has_valid_team_size %}
+              <h2>Регистрация временно недоступна</h2>
+              <p>Организатор уточняет допустимый размер команды.</p>
+              <a class="btn btn-outline-primary w-100" href="{{ url_for('competitions') }}">К календарю</a>
             {% else %}
               <h2>Приём заявок завершён</h2>
               <p>Следите за новыми соревнованиями в календаре клуба.</p>

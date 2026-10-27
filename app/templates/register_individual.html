@@ -19,7 +19,7 @@
           <div class="alert alert-danger" role="alert">{{ form_error }}</div>
           <a class="btn btn-outline-primary" href="{{ url_for('competition_detail', slug=competition.slug) }}">Вернуться к соревнованию</a>
         {% else %}
-          <form method="post" action="{{ url_for('register_for_competition', slug=competition.slug) }}" novalidate>
+          <form method="post" action="{{ url_for('register_for_competition', slug=competition.slug) }}">
             <div class="form-section-heading">
               <span>01</span>
               <div><h2>Данные участника</h2><p>Используйте актуальные данные студента ТюмГУ.</p></div>
@@ -58,9 +58,12 @@
               </div>
             </div>
 
+            {% include "_registration_consent.html" %}
+            {% include "_registration_captcha.html" %}
+
             <div class="form-submit-row">
               <p>Отправляя форму, вы подтверждаете корректность указанных данных.</p>
-              <button class="btn btn-primary btn-lg" type="submit">Отправить заявку</button>
+              <button class="btn btn-primary btn-lg" type="submit"{% if captcha_enabled and not captcha_ready %} disabled{% endif %}>Отправить заявку</button>
             </div>
           </form>
         {% endif %}

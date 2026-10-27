@@ -40,7 +40,8 @@ class Competition(TimestampMixin, Base):
         CheckConstraint(
             "(registration_type = 'individual' AND min_team_size IS NULL "
             "AND max_team_size IS NULL) OR "
-            "(registration_type = 'team' AND min_team_size >= 1 "
+            "(registration_type = 'team' AND min_team_size IS NOT NULL "
+            "AND max_team_size IS NOT NULL AND min_team_size >= 1 "
             "AND max_team_size >= min_team_size)",
             name="ck_competitions_team_size",
         ),
@@ -79,3 +80,12 @@ class Competition(TimestampMixin, Base):
 
     def __str__(self) -> str:
         return self.title
+
+    @property
+    def has_valid_team_size(self) -> bool:
+        return (
+            self.min_team_size is not None
+            and self.max_team_size is not None
+            and self.min_team_size >= 1
+            and self.max_team_size >= self.min_team_size
+        )

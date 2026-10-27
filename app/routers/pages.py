@@ -2,21 +2,24 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 from starlette.datastructures import FormData
+from starlette.concurrency import run_in_threadpool
 from starlette.templating import Jinja2Templates
 
 from app.api.deps import SessionDep
 from app.core.branding import BRAND_ASSETS
 from app.core.config import settings
+from app.core.privacy import CONSENT_DOCUMENT_TEMPLATE, CONSENT_VERSION
 from app.core.time import local_datetime
 from app.models import Competition, RegistrationType, Sport
 from app.models.training import WEEKDAY_NAMES
 from app.schemas import IndividualRegistrationCreate, TeamRegistrationCreate
 from app.services import registrations as registration_service
+from app.services.captcha import CaptchaError, verify_smartcaptcha
 
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
@@ -53,7 +56,14 @@ def registration_is_open(competition: Competition) -> bool:
     deadline = competition.registration_deadline
     if deadline.tzinfo is None:
         deadline = deadline.replace(tzinfo=UTC)
-    return competition.is_registration_open and datetime.now(UTC) <= deadline
+    return (
+        competition.is_registration_open
+        and datetime.now(UTC) <= deadline
+        and (
+            competition.registration_type != RegistrationType.team
+            or competition.has_valid_team_size
+        )
+    )
 
 
 def get_published_competition(db: Session, slug: str) -> Competition:
@@ -74,7 +84,13 @@ def registration_validation_errors(exc: ValidationError) -> dict[str, str]:
         field = ".".join(str(part) for part in error["loc"]) or "form"
         error_type = str(error["type"])
         message = str(error["msg"])
-        if "университетскую почту" in message:
+        if field == "personal_data_consent":
+            errors[field] = "Дайте согласие на обработку персональных данных"
+        elif field == "members_consents_confirmed":
+            errors[field] = "Подтвердите получение согласий всех участников команды"
+        elif field == "consent_version":
+            errors[field] = "Документ согласия изменился. Прочитайте актуальную версию."
+        elif "университетскую почту" in message:
             errors[field] = message.removeprefix("Value error, ")
         elif "не должны повторяться" in message:
             errors["form"] = message.removeprefix("Value error, ")
@@ -116,6 +132,9 @@ def parse_team_form(form: FormData) -> dict[str, object]:
         "captain_course": str(form.get("captain_course", "")),
         "captain_group_name": str(form.get("captain_group_name", "")),
         "members": members,
+        "personal_data_consent": str(form.get("personal_data_consent", "")),
+        "consent_version": str(form.get("consent_version", "")),
+        "members_consents_confirmed": str(form.get("members_consents_confirmed", "")),
     }
 
 
@@ -133,6 +152,13 @@ def registration_form_context(
         "errors": errors or {},
         "form_error": form_error,
         "initial_member_count": max((competition.min_team_size or 1) - 1, 0),
+        "consent_version": CONSENT_VERSION,
+        "is_team_registration": competition.registration_type == RegistrationType.team,
+        "captcha_enabled": settings.captcha_enabled,
+        "captcha_ready": settings.captcha_ready,
+        "captcha_client_key": settings.smartcaptcha_client_key
+        if settings.captcha_ready
+        else "",
     }
 
 
@@ -140,6 +166,37 @@ templates.env.filters["date_ru"] = format_date
 templates.env.filters["datetime_ru"] = format_datetime
 templates.env.globals["weekday_names"] = WEEKDAY_NAMES
 templates.env.globals["brand_assets"] = BRAND_ASSETS
+templates.env.globals["consent_document_template"] = CONSENT_DOCUMENT_TEMPLATE
+templates.env.globals["consent_version"] = CONSENT_VERSION
+
+
+@router.get(
+    "/legal/personal-data-consent",
+    response_class=HTMLResponse,
+    name="personal_data_consent",
+)
+def personal_data_consent(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "legal/personal_data_consent.html")
+
+
+@router.get(
+    "/legal/personal-data-consent/download",
+    response_class=HTMLResponse,
+    name="download_personal_data_consent",
+)
+def download_personal_data_consent(request: Request) -> RedirectResponse:
+    return RedirectResponse(
+        request.url_for("personal_data_consent"), status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
+@router.get(
+    "/legal/privacy-policy",
+    response_class=HTMLResponse,
+    name="privacy_policy",
+)
+def privacy_policy(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "legal/privacy_policy.html")
 
 
 @router.get("/", response_class=HTMLResponse, name="home")
@@ -264,7 +321,7 @@ async def submit_registration(
     form_data: dict[str, object] = (
         parse_team_form(form)
         if is_team
-        else {key: str(value) for key, value in form.items()}
+        else {key: str(value) for key, value in form.items() if key != "smart-token"}
     )
     schema = TeamRegistrationCreate if is_team else IndividualRegistrationCreate
     template_name = "register_team.html" if is_team else "register_individual.html"
@@ -280,6 +337,22 @@ async def submit_registration(
                 errors=registration_validation_errors(exc),
             ),
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )
+
+    tokens = form.getlist("smart-token")
+    captcha_token = str(tokens[0]) if len(tokens) == 1 else ""
+    try:
+        await run_in_threadpool(verify_smartcaptcha, captcha_token, request.url.netloc)
+    except CaptchaError as exc:
+        return templates.TemplateResponse(
+            request,
+            template_name,
+            registration_form_context(
+                competition,
+                form_data=form_data,
+                errors={"captcha": exc.message},
+            ),
+            status_code=exc.status_code,
         )
 
     try:

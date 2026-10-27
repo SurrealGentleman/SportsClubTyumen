@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Согласие на обработку персональных данных — ССК «Ладья»{% endblock %}
+
+{% block content %}
+  <section class="section-space">
+    <div class="container">
+      <article class="info-card legal-document mx-auto">
+        {% include consent_document_template %}
+      </article>
+    </div>
+  </section>
+{% endblock %}

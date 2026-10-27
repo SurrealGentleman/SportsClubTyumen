@@ -8,7 +8,7 @@
       <a class="back-link" href="{{ url_for('competition_detail', slug=competition.slug) }}">← К соревнованию</a>
       <p class="eyebrow">Командная заявка</p>
       <h1>{{ competition.title }}</h1>
-      <p>Состав команды: от {{ competition.min_team_size }} до {{ competition.max_team_size }} участников вместе с капитаном.</p>
+      <p>{% if competition.has_valid_team_size %}Состав команды: от {{ competition.min_team_size }} до {{ competition.max_team_size }} участников вместе с капитаном.{% else %}Организатор уточняет допустимый размер команды.{% endif %}</p>
     </div>
   </section>
 
@@ -18,8 +18,8 @@
         {% if form_error %}<div class="alert alert-danger" role="alert">{{ form_error }}</div>{% endif %}
         {% if errors.form %}<div class="alert alert-danger" role="alert">{{ errors.form }}</div>{% endif %}
 
-        {% if not form_error or form_data %}
-          <form method="post" action="{{ url_for('register_for_competition', slug=competition.slug) }}" novalidate>
+        {% if (not form_error or form_data) and competition.has_valid_team_size %}
+          <form method="post" action="{{ url_for('register_for_competition', slug=competition.slug) }}">
             <div class="form-section-heading">
               <span>01</span>
               <div><h2>Команда</h2><p>Название будет отображаться в списке заявок.</p></div>
@@ -139,9 +139,12 @@
 
             <button id="add-team-member" class="btn btn-outline-primary mt-3" type="button">+ Добавить участника</button>
 
+            {% include "_registration_consent.html" %}
+            {% include "_registration_captcha.html" %}
+
             <div class="form-submit-row">
               <p>Проверьте состав: капитан учитывается как первый участник команды.</p>
-              <button class="btn btn-primary btn-lg" type="submit">Отправить командную заявку</button>
+              <button class="btn btn-primary btn-lg" type="submit"{% if captcha_enabled and not captcha_ready %} disabled{% endif %}>Отправить командную заявку</button>
             </div>
           </form>
         {% else %}

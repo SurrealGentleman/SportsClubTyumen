@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.privacy import CONSENT_VERSION
 from app.models import Competition, Registration, RegistrationMember, RegistrationType
 
 
@@ -38,6 +39,8 @@ def valid_payload(email: str = "student@study.utmn.ru") -> dict[str, str]:
         "course": "2",
         "group_name": "01",
         "phone": "+7 900 000-00-00",
+        "personal_data_consent": "on",
+        "consent_version": CONSENT_VERSION,
     }
 
 

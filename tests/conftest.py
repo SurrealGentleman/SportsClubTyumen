@@ -14,6 +14,11 @@ os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["SESSION_COOKIE_SECURE"] = "false"
 os.environ["UNIVERSITY_EMAIL_DOMAIN"] = "study.utmn.ru"
+# General workflow tests run offline; dedicated CAPTCHA tests enable verification.
+os.environ["CAPTCHA_ENABLED"] = "false"
+os.environ["SMARTCAPTCHA_CLIENT_KEY"] = ""
+os.environ["SMARTCAPTCHA_SERVER_KEY"] = ""
+os.environ["SMARTCAPTCHA_ALLOWED_HOSTS"] = "testserver"
 
 from app.api.deps import get_db
 from app.db.base import Base

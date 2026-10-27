@@ -1,0 +1,41 @@
+<div class="registration-consent mt-4">
+  <input type="hidden" name="consent_version" value="{{ consent_version }}">
+  <div class="form-check">
+    <input
+      class="form-check-input{% if errors.personal_data_consent or errors.consent_version %} is-invalid{% endif %}"
+      type="checkbox"
+      id="personal_data_consent"
+      name="personal_data_consent"
+      value="on"
+      {% if form_data.get('personal_data_consent') == 'on' and form_data.get('consent_version') == consent_version %}checked{% endif %}
+      required
+    >
+    <label class="form-check-label" for="personal_data_consent">
+      Даю согласие на обработку персональных данных.
+    </label>
+    {% if errors.personal_data_consent or errors.consent_version %}
+      <div class="invalid-feedback">{{ errors.personal_data_consent or errors.consent_version }}</div>
+    {% endif %}
+  </div>
+  {% if is_team_registration %}
+    <div class="form-check mt-3">
+      <input
+        class="form-check-input{% if errors.members_consents_confirmed %} is-invalid{% endif %}"
+        type="checkbox"
+        id="members_consents_confirmed"
+        name="members_consents_confirmed"
+        value="on"
+        {% if form_data.get('members_consents_confirmed') == 'on' and form_data.get('consent_version') == consent_version %}checked{% endif %}
+        required
+      >
+      <label class="form-check-label" for="members_consents_confirmed">
+        Подтверждаю получение согласий участников команды.
+      </label>
+      {% if errors.members_consents_confirmed %}<div class="invalid-feedback">{{ errors.members_consents_confirmed }}</div>{% endif %}
+    </div>
+  {% endif %}
+  <p class="form-text mt-3 mb-0">
+    <a href="{{ url_for('personal_data_consent') }}" target="_blank" rel="noopener">Согласие на обработку персональных данных</a>
+    · <a href="{{ url_for('privacy_policy') }}" target="_blank" rel="noopener">Политика обработки персональных данных</a>
+  </p>
+</div>

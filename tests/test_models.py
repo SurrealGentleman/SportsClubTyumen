@@ -1,5 +1,7 @@
 from datetime import UTC, date, datetime, time
 
+import pytest
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.base import Base
@@ -127,3 +129,25 @@ def test_training_groups_are_fixed_values(db_session: Session) -> None:
 
     assert sport.trainings[0].group_name == TrainingGroup.mixed
     assert str(sport.trainings[0].group_name) == "Общая группа"
+
+
+@pytest.mark.parametrize(
+    ("minimum", "maximum"), [(None, None), (None, 5), (3, None), (0, 5), (5, 3)]
+)
+def test_database_rejects_team_competitions_with_invalid_limits(
+    db_session: Session, minimum: int | None, maximum: int | None
+) -> None:
+    competition = Competition(
+        title="Командный кубок",
+        location="ТюмГУ",
+        start_date=date(2027, 2, 1),
+        end_date=date(2027, 2, 1),
+        registration_deadline=datetime(2027, 1, 25, tzinfo=UTC),
+        registration_type=RegistrationType.team,
+        min_team_size=minimum,
+        max_team_size=maximum,
+    )
+    db_session.add(competition)
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()

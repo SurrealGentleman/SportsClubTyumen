@@ -1,8 +1,9 @@
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.core.config import settings
+from app.core.privacy import CONSENT_VERSION
 
 
 def validate_email_domain(value: EmailStr) -> EmailStr:
@@ -31,7 +32,30 @@ class ParticipantCreate(BaseModel):
         return validate_email_domain(value)
 
 
-class IndividualRegistrationCreate(ParticipantCreate):
+def parse_consent_checkbox(value: object) -> bool:
+    return value is True or (isinstance(value, str) and value in {"on", "true"})
+
+
+class ConsentCreate(BaseModel):
+    personal_data_consent: Literal[True]
+    consent_version: str
+
+    @field_validator("personal_data_consent", mode="before")
+    @classmethod
+    def validate_consent_checkbox(cls, value: object) -> bool:
+        return parse_consent_checkbox(value)
+
+    @field_validator("consent_version")
+    @classmethod
+    def validate_consent_version(cls, value: str) -> str:
+        if value != CONSENT_VERSION:
+            raise ValueError(
+                "Документ согласия изменился. Прочитайте актуальную версию."
+            )
+        return value
+
+
+class IndividualRegistrationCreate(ParticipantCreate, ConsentCreate):
     phone: str = Field(min_length=5, max_length=50)
 
     @field_validator("phone", mode="before")
@@ -40,7 +64,7 @@ class IndividualRegistrationCreate(ParticipantCreate):
         return value.strip() if isinstance(value, str) else value
 
 
-class TeamRegistrationCreate(BaseModel):
+class TeamRegistrationCreate(ConsentCreate):
     team_name: str = Field(min_length=2, max_length=255)
     captain_name: str = Field(min_length=3, max_length=255)
     captain_email: EmailStr
@@ -49,6 +73,12 @@ class TeamRegistrationCreate(BaseModel):
     captain_course: int = Field(ge=1, le=6)
     captain_group_name: str = Field(min_length=1, max_length=120)
     members: list[ParticipantCreate] = Field(default_factory=list)
+    members_consents_confirmed: Literal[True]
+
+    @field_validator("members_consents_confirmed", mode="before")
+    @classmethod
+    def validate_members_consents(cls, value: object) -> bool:
+        return parse_consent_checkbox(value)
 
     @field_validator(
         "team_name",

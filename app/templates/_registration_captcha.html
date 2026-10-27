@@ -1,0 +1,12 @@
+{% if captcha_enabled %}
+  <div class="registration-captcha mt-4">
+    {% if captcha_ready %}
+      <div class="smart-captcha" data-sitekey="{{ captcha_client_key }}" data-hl="ru"></div>
+      <script src="https://smartcaptcha.cloud.yandex.ru/captcha.js" defer></script>
+      <noscript><p class="text-danger">Для проверки «Я не робот» включите JavaScript в браузере.</p></noscript>
+    {% else %}
+      <div class="alert alert-warning mb-0" role="alert">Подача заявок временно недоступна. Попробуйте позже.</div>
+    {% endif %}
+    {% if errors.captcha %}<p class="text-danger mt-2 mb-0" role="alert">{{ errors.captcha }}</p>{% endif %}
+  </div>
+{% endif %}

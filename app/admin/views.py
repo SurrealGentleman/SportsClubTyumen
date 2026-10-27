@@ -1,5 +1,6 @@
 from fastapi import Request, Response
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import selectinload
 from sqladmin import ModelView, action
 from sqladmin.fields import SelectField
@@ -20,6 +21,8 @@ from app.services.excel_export import build_competition_registrations_xlsx
 
 def format_admin_datetime(model: object, attribute: str) -> str:
     value = getattr(model, attribute)
+    if value is None:
+        return "Не зафиксировано"
     return local_datetime(value).strftime("%d.%m.%Y %H:%M")
 
 
@@ -36,8 +39,76 @@ class RussianAdminForm(Form):
         locales = ["ru"]
 
 
+class CompetitionAdminForm(RussianAdminForm):
+    def validate(self, extra_validators: dict | None = None) -> bool:
+        minimum = self["min_team_size"]
+        maximum = self["max_team_size"]
+        if self["registration_type"].data == RegistrationType.individual.value:
+            for field in (minimum, maximum):
+                field.data = None
+                field.raw_data = []
+                field.process_errors = []
+            return super().validate(extra_validators)
+
+        valid = super().validate(extra_validators)
+        if self["registration_type"].data != RegistrationType.team.value:
+            return valid
+        for field, label in ((minimum, "минимум"), (maximum, "максимум")):
+            if field.data is None:
+                if not field.errors:
+                    field.errors.append(
+                        f"Для командного соревнования укажите {label} участников"
+                    )
+                valid = False
+            elif field.data < 1:
+                field.errors.append("Количество участников должно быть не меньше 1")
+                valid = False
+        if minimum.data is not None and maximum.data is not None:
+            if maximum.data < minimum.data:
+                maximum.errors.append(
+                    "Максимум участников не может быть меньше минимума"
+                )
+                valid = False
+        return valid
+
+
 class RussianModelView(ModelView):
     form_base_class = RussianAdminForm
+
+    @staticmethod
+    def database_error_message(exc: SQLAlchemyError) -> str:
+        if isinstance(exc, IntegrityError):
+            constraint = getattr(
+                getattr(exc.orig, "diag", None), "constraint_name", None
+            )
+            messages = {
+                "ck_competitions_team_size": (
+                    "Для командного соревнования укажите минимум и максимум участников. "
+                    "Оба значения должны быть не меньше 1, а максимум — не меньше минимума."
+                ),
+                "ck_competitions_date_range": (
+                    "Дата окончания соревнования не может быть раньше даты начала."
+                ),
+            }
+            for name, message in messages.items():
+                if constraint == name or f"CHECK constraint failed: {name}" in str(
+                    exc.orig
+                ):
+                    return message
+            return "Не удалось сохранить запись: данные нарушают ограничения. Проверьте значения и наличие повторяющихся записей."
+        return "Не удалось сохранить запись. Повторите попытку позже."
+
+    async def insert_model(self, request: Request, data: dict):
+        try:
+            return await super().insert_model(request, data)
+        except SQLAlchemyError as exc:
+            raise ValueError(self.database_error_message(exc)) from None
+
+    async def update_model(self, request: Request, pk: str, data: dict):
+        try:
+            return await super().update_model(request, pk, data)
+        except SQLAlchemyError as exc:
+            raise ValueError(self.database_error_message(exc)) from None
 
 
 class SportAdmin(RussianModelView, model=Sport):
@@ -120,6 +191,9 @@ class CompetitionAdmin(RussianModelView, model=Competition):
     name_plural = "Соревнования"
     icon = "fa-solid fa-trophy"
     can_view_details = True
+    form_base_class = CompetitionAdminForm
+    create_template = "sqladmin/competition_create.html"
+    edit_template = "sqladmin/competition_edit.html"
 
     column_list = [
         Competition.id,
@@ -157,6 +231,12 @@ class CompetitionAdmin(RussianModelView, model=Competition):
             "display_timezone": APP_TIMEZONE,
             "description": "Дата и время Тюмени (UTC+5)",
         },
+        "min_team_size": {
+            "description": "Обязательно для командного формата. Капитан входит в число участников.",
+        },
+        "max_team_size": {
+            "description": "Обязательно для командного формата. Не меньше указанного минимума.",
+        },
     }
     column_formatters = {
         Competition.registration_type: format_registration_type,
@@ -178,6 +258,24 @@ class CompetitionAdmin(RussianModelView, model=Competition):
         Competition.is_registration_open: "Регистрация открыта",
         Competition.is_published: "Опубликовано",
     }
+
+    async def on_model_change(
+        self, data: dict, model: Competition, is_created: bool, request: Request
+    ) -> None:
+        if data.get("registration_type") == RegistrationType.individual.value:
+            data["min_team_size"] = None
+            data["max_team_size"] = None
+        elif data.get("registration_type") == RegistrationType.team.value:
+            minimum = data.get("min_team_size")
+            maximum = data.get("max_team_size")
+            if minimum is None or maximum is None:
+                raise ValueError(
+                    "Для командного соревнования укажите минимум и максимум участников"
+                )
+            if minimum < 1 or maximum < 1:
+                raise ValueError("Количество участников должно быть не меньше 1")
+            if maximum < minimum:
+                raise ValueError("Максимум участников не может быть меньше минимума")
 
     @action(
         name="export-xlsx",
@@ -244,6 +342,9 @@ class RegistrationAdmin(RussianModelView, model=Registration):
         Registration.captain_phone,
         Registration.members,
         Registration.created_at,
+        Registration.personal_data_consent_at,
+        Registration.consent_document_version,
+        Registration.members_consents_confirmed_at,
     ]
     column_searchable_list = [
         Registration.team_name,
@@ -252,8 +353,19 @@ class RegistrationAdmin(RussianModelView, model=Registration):
     ]
     column_sortable_list = [Registration.id, Registration.created_at]
     column_default_sort = [(Registration.created_at, True)]
-    form_excluded_columns = [Registration.created_at, Registration.members]
-    column_formatters = {Registration.created_at: format_admin_datetime}
+    form_excluded_columns = [
+        Registration.created_at,
+        Registration.members,
+        Registration.personal_data_consent_at,
+        Registration.consent_document_version,
+        Registration.consent_document_text,
+        Registration.members_consents_confirmed_at,
+    ]
+    column_formatters = {
+        Registration.created_at: format_admin_datetime,
+        Registration.personal_data_consent_at: format_admin_datetime,
+        Registration.members_consents_confirmed_at: format_admin_datetime,
+    }
     column_formatters_detail = column_formatters
     column_labels = {
         Registration.id: "ID",
@@ -264,6 +376,9 @@ class RegistrationAdmin(RussianModelView, model=Registration):
         Registration.captain_phone: "Телефон",
         Registration.members: "Участники",
         Registration.created_at: "Создана",
+        Registration.personal_data_consent_at: "Согласие участника / капитана",
+        Registration.consent_document_version: "Версия документа согласия",
+        Registration.members_consents_confirmed_at: "Подтверждение капитана о согласиях участников",
     }
 
 

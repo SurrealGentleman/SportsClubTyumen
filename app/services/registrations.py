@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.privacy import consent_document_text
 from app.models import (
     Competition,
     Registration,
@@ -51,6 +52,10 @@ class TeamTooLargeError(RegistrationError):
     message = "В команде слишком много участников"
 
 
+class RegistrationConfigurationError(RegistrationError):
+    message = "Организатор ещё не указал допустимый размер команды. Регистрация временно недоступна."
+
+
 def ensure_registration_available(competition: Competition) -> None:
     if not competition.is_registration_open:
         raise RegistrationClosedError
@@ -60,6 +65,9 @@ def ensure_registration_available(competition: Competition) -> None:
         deadline = deadline.replace(tzinfo=UTC)
     if datetime.now(UTC) > deadline:
         raise RegistrationDeadlineError
+    if competition.registration_type == RegistrationType.team:
+        if not competition.has_valid_team_size:
+            raise RegistrationConfigurationError
 
 
 def ensure_individual_registration_available(competition: Competition) -> None:
@@ -110,6 +118,9 @@ def create_individual_registration(
         captain_name=registration_in.full_name,
         captain_email=normalized_email,
         captain_phone=registration_in.phone,
+        personal_data_consent_at=datetime.now(UTC),
+        consent_document_version=registration_in.consent_version,
+        consent_document_text=consent_document_text(),
     )
     registration.members.append(
         RegistrationMember(
@@ -140,8 +151,9 @@ def create_team_registration(
     ensure_registration_available(competition)
 
     team_size = 1 + len(registration_in.members)
-    min_team_size = competition.min_team_size or 1
-    max_team_size = competition.max_team_size or min_team_size
+    min_team_size = competition.min_team_size
+    max_team_size = competition.max_team_size
+    assert min_team_size is not None and max_team_size is not None
     if team_size < min_team_size:
         raise TeamTooSmallError(
             f"В команде должно быть не менее {min_team_size} участников"
@@ -178,12 +190,17 @@ def create_team_registration(
             "Один или несколько участников уже зарегистрированы на соревнование"
         )
 
+    consent_accepted_at = datetime.now(UTC)
     registration = Registration(
         competition=competition,
         team_name=registration_in.team_name,
         captain_name=registration_in.captain_name,
         captain_email=normalized_captain_email,
         captain_phone=registration_in.captain_phone,
+        personal_data_consent_at=consent_accepted_at,
+        consent_document_version=registration_in.consent_version,
+        consent_document_text=consent_document_text(),
+        members_consents_confirmed_at=consent_accepted_at,
     )
     registration.members.append(
         RegistrationMember(

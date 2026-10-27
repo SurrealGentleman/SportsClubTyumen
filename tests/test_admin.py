@@ -1,8 +1,19 @@
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from types import SimpleNamespace
 
+from app.admin.views import CompetitionAdmin, CompetitionAdminForm, RussianModelView
 from app.core.security import get_password_hash
-from app.models import Admin, Sport, Training, TrainingGroup
+from app.models import (
+    Admin,
+    Competition,
+    RegistrationType,
+    Sport,
+    Training,
+    TrainingGroup,
+)
 
 
 def create_admin(db_session: Session, *, is_active: bool = True) -> Admin:
@@ -14,6 +25,194 @@ def create_admin(db_session: Session, *, is_active: bool = True) -> Admin:
     db_session.add(admin)
     db_session.commit()
     return admin
+
+
+@pytest.fixture()
+def admin_client(client: TestClient, db_session: Session) -> TestClient:
+    create_admin(db_session)
+    response = client.post(
+        "/admin/login",
+        data={"username": "admin", "password": "strong-admin-password"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    return client
+
+
+def competition_payload(
+    registration_type: str = "team", minimum: str = "3", maximum: str = "5"
+) -> dict[str, str]:
+    return {
+        "title": "Кубок для проверки размеров команды",
+        "description": "",
+        "location": "ТюмГУ",
+        "start_date": "2027-02-01",
+        "end_date": "2027-02-02",
+        "registration_deadline": "2027-01-25 18:00:00",
+        "registration_type": registration_type,
+        "min_team_size": minimum,
+        "max_team_size": maximum,
+        "is_registration_open": "y",
+        "is_published": "y",
+        "save": "Сохранить",
+    }
+
+
+def test_postgresql_team_size_violation_has_a_safe_russian_message() -> None:
+    error = IntegrityError(
+        "INSERT INTO competitions ...",
+        {"private": "submitted data"},
+        SimpleNamespace(
+            diag=SimpleNamespace(constraint_name="ck_competitions_team_size")
+        ),
+    )
+
+    message = RussianModelView.database_error_message(error)
+
+    assert "укажите минимум и максимум участников" in message
+    assert "INSERT INTO" not in message
+    assert "submitted data" not in message
+
+
+@pytest.mark.parametrize(
+    ("minimum", "maximum", "message"),
+    [
+        ("", "", "укажите минимум участников"),
+        ("", "5", "укажите минимум участников"),
+        ("3", "", "укажите максимум участников"),
+        ("0", "5", "Количество участников должно быть не меньше 1"),
+        ("3", "0", "Количество участников должно быть не меньше 1"),
+        ("5", "3", "Максимум участников не может быть меньше минимума"),
+    ],
+)
+def test_admin_rejects_invalid_team_sizes_on_create(
+    admin_client: TestClient,
+    db_session: Session,
+    minimum: str,
+    maximum: str,
+    message: str,
+) -> None:
+    response = admin_client.post(
+        "/admin/competition/create",
+        data=competition_payload(minimum=minimum, maximum=maximum),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 400
+    assert message in response.text
+    assert db_session.query(Competition).count() == 0
+
+
+@pytest.mark.parametrize("registration_type", ["team", "individual"])
+def test_admin_creates_competitions_with_type_specific_limits(
+    admin_client: TestClient, db_session: Session, registration_type: str
+) -> None:
+    data = competition_payload(registration_type)
+    if registration_type == "individual":
+        data.pop("min_team_size")
+        data.pop("max_team_size")
+    response = admin_client.post(
+        "/admin/competition/create", data=data, follow_redirects=False
+    )
+
+    assert response.status_code == 302, response.text
+    competition = db_session.query(Competition).one()
+    if registration_type == "team":
+        assert (competition.min_team_size, competition.max_team_size) == (3, 5)
+    else:
+        assert (competition.min_team_size, competition.max_team_size) == (None, None)
+
+
+def test_admin_rejects_missing_team_sizes_on_edit_and_clears_individual_limits(
+    admin_client: TestClient, db_session: Session
+) -> None:
+    create_response = admin_client.post(
+        "/admin/competition/create", data=competition_payload(), follow_redirects=False
+    )
+    assert create_response.status_code == 302
+    competition = db_session.query(Competition).one()
+    path = f"/admin/competition/edit/{competition.id}"
+    edit_form = admin_client.get(path)
+    assert "competition-form.js" in edit_form.text
+
+    invalid_response = admin_client.post(
+        path, data=competition_payload(minimum="", maximum=""), follow_redirects=False
+    )
+    assert invalid_response.status_code == 400
+    assert "укажите минимум участников" in invalid_response.text
+    db_session.refresh(competition)
+    assert (competition.min_team_size, competition.max_team_size) == (3, 5)
+
+    individual_response = admin_client.post(
+        path, data=competition_payload("individual"), follow_redirects=False
+    )
+    assert individual_response.status_code == 302, individual_response.text
+    db_session.refresh(competition)
+    assert competition.registration_type == RegistrationType.individual
+    assert (competition.min_team_size, competition.max_team_size) == (None, None)
+
+    missing_limits_response = admin_client.post(
+        path, data=competition_payload(minimum="", maximum=""), follow_redirects=False
+    )
+    assert missing_limits_response.status_code == 400
+    db_session.refresh(competition)
+    assert competition.registration_type == RegistrationType.individual
+
+
+@pytest.mark.parametrize("operation", ["create", "edit"])
+@pytest.mark.parametrize("bypass_save_validation", [False, True])
+def test_admin_missing_team_sizes_never_expose_database_details(
+    admin_client: TestClient,
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+    bypass_save_validation: bool,
+) -> None:
+    path = "/admin/competition/create"
+    competition = None
+    if operation == "edit":
+        response = admin_client.post(
+            path, data=competition_payload(), follow_redirects=False
+        )
+        assert response.status_code == 302
+        competition = db_session.query(Competition).one()
+        path = f"/admin/competition/edit/{competition.id}"
+
+    # Exercise the save-time safety net even if form validation is bypassed.
+    monkeypatch.setattr(
+        CompetitionAdminForm, "validate", lambda self, extra_validators=None: True
+    )
+    if bypass_save_validation:
+
+        async def skip_save_validation(self, data, model, is_created, request):
+            pass
+
+        monkeypatch.setattr(CompetitionAdmin, "on_model_change", skip_save_validation)
+
+    response = admin_client.post(
+        path, data=competition_payload(minimum="", maximum=""), follow_redirects=False
+    )
+
+    assert response.status_code == 400
+    assert (
+        "Для командного соревнования укажите минимум и максимум участников"
+        in response.text
+    )
+    for private_detail in (
+        "IntegrityError",
+        "CheckViolation",
+        "INSERT INTO",
+        "UPDATE competitions",
+        "parameters:",
+        "sqlalche.me",
+        "ck_competitions_team_size",
+    ):
+        assert private_detail not in response.text
+    if competition is not None:
+        db_session.refresh(competition)
+        assert (competition.min_team_size, competition.max_team_size) == (3, 5)
+    else:
+        assert db_session.query(Competition).count() == 0
 
 
 def test_admin_requires_authentication(client: TestClient) -> None:
