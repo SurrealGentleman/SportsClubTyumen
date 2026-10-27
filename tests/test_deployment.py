@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -13,6 +14,21 @@ from app.core.config import Settings
 from scripts.check_deployment import main
 
 
+def test_production_env_example_contains_all_application_settings():
+    template = (
+        Path(__file__).resolve().parents[1] / "deploy/production.env.example"
+    ).read_text(encoding="utf-8")
+    names = set(re.findall(r"^([A-Z][A-Z0-9_]*)=", template, re.MULTILINE))
+    assert {name.upper() for name in Settings.model_fields} <= names
+    assert {
+        "DOMAIN",
+        "ACME_EMAIL",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_DB",
+    } <= names
+
+
 @pytest.fixture()
 def deployment_settings(monkeypatch):
     config = Settings(
@@ -22,7 +38,6 @@ def deployment_settings(monkeypatch):
         app_debug=False,
         database_echo=False,
         production=True,
-        render=False,
         public_base_url="https://club.example",
         captcha_enabled=True,
         smartcaptcha_client_key="ysc1_test-public-key",
@@ -82,7 +97,6 @@ def test_production_check_is_offline_and_reports_limits(
     "changes",
     [
         {"production": False},
-        {"production": False, "render": True},
         {"captcha_enabled": False},
         {"smartcaptcha_server_key": SecretStr("")},
         {"smartcaptcha_allowed_hosts": "other.example"},

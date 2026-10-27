@@ -29,8 +29,14 @@ env/
 *.db
 *.sqlite
 *.sqlite3
+*.dump
+*.backup
+*.sql.gz
+backups/
 
 *.log
 
 README.md
+DEPLOYMENT.md
+deploy/
 tests/

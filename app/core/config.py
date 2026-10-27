@@ -13,8 +13,6 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     session_cookie_secure: bool = False
     production: bool = False
-    render: bool = False
-    render_external_url: str = ""
     public_base_url: str = ""
     csp_report_only: bool = False
     csp_captcha_report_only: bool = True
@@ -36,11 +34,11 @@ class Settings(BaseSettings):
 
     @property
     def https_deployment(self) -> bool:
-        return self.production or self.render
+        return self.production
 
     @property
     def external_url(self) -> str:
-        return self.public_base_url or self.render_external_url
+        return self.public_base_url
 
     def validate_production(self) -> None:
         if not self.https_deployment:
@@ -63,8 +61,6 @@ class Settings(BaseSettings):
             or url.fragment
         ):
             raise ValueError(invalid_url_message)
-        if not self.production:
-            return
         if self.app_debug or self.database_echo:
             raise ValueError("Для production отключите APP_DEBUG и DATABASE_ECHO.")
         if len(self.secret_key) < 32 or self.secret_key in {

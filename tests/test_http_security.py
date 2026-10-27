@@ -72,7 +72,6 @@ def production_settings(**overrides):
         database_echo=False,
         secret_key="s" * 64,
         production=True,
-        render=False,
         public_base_url="https://club.example",
         captcha_enabled=True,
         smartcaptcha_client_key="ysc1_test-only-public",
@@ -85,6 +84,7 @@ def production_settings(**overrides):
 @pytest.mark.parametrize(
     "overrides",
     [
+        {"public_base_url": ""},
         {"public_base_url": "http://club.example"},
         {"public_base_url": "https://club.example/path"},
         {"public_base_url": "https://user:password@club.example"},
@@ -102,18 +102,12 @@ def test_incomplete_production_configuration_is_rejected(overrides):
         production_settings(**overrides).validate_production()
 
 
-@pytest.mark.parametrize("render", [False, True])
 def test_https_redirect_secure_cookie_hsts_and_trusted_host(
     monkeypatch,
     db_engine,
     testing_session_maker,
-    render,
 ):
     config = production_settings(
-        production=not render,
-        render=render,
-        public_base_url="" if render else "https://club.example",
-        render_external_url="https://club.example" if render else "",
         session_cookie_secure=False,
     )
     for name in type(config).model_fields:
@@ -134,6 +128,24 @@ def test_https_redirect_secure_cookie_hsts_and_trusted_host(
             client.get("https://evil.example/", follow_redirects=False).status_code
             == 400
         )
+
+
+def test_local_http_does_not_require_a_public_url_or_secure_cookie(
+    monkeypatch, db_engine, testing_session_maker
+):
+    config = production_settings(
+        production=False,
+        public_base_url="",
+        session_cookie_secure=False,
+    )
+    for name in type(config).model_fields:
+        monkeypatch.setattr(settings, name, getattr(config, name))
+    app = create_app(db_engine=db_engine, session_maker=testing_session_maker)
+    with TestClient(app, base_url="http://localhost:8000") as client:
+        response = client.get("/admin/login", follow_redirects=False)
+    assert response.status_code == 200
+    assert "strict-transport-security" not in response.headers
+    assert "secure" not in response.headers["set-cookie"].lower()
 
 
 def test_public_cleanup_never_resets_admin_login_limit(

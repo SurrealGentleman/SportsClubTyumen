@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 os.environ["APP_DEBUG"] = "true"
+os.environ["PRODUCTION"] = "false"
 os.environ["APP_NAME"] = "Спортивный клуб ТюмГУ"
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["SECRET_KEY"] = "test-secret-key"
