@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.slugs import create_unique_slug
 from app.models.admin import Admin
+from app.models.login_attempt import LoginAttempt
 from app.models.competition import Competition, RegistrationType
 from app.models.registration import Registration, RegistrationMember
 from app.models.sport import Sport
@@ -10,6 +11,7 @@ from app.models.training import Training, TrainingGroup
 
 __all__ = (
     "Admin",
+    "LoginAttempt",
     "Competition",
     "Registration",
     "RegistrationMember",

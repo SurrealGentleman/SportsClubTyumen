@@ -1,4 +1,4 @@
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     database_echo: bool = False
     secret_key: str = "change-me-in-production"
     session_cookie_secure: bool = False
+    admin_login_account_limit: int = Field(default=5, ge=1)
+    admin_login_ip_limit: int = Field(default=30, ge=1)
+    admin_login_window_seconds: int = Field(default=900, ge=1)
     university_email_domain: str = "utmn.ru"
     app_timezone: str = "Asia/Yekaterinburg"
 

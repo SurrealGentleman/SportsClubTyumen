@@ -1,4 +1,5 @@
 import pytest
+from tests.admin_helpers import admin_login
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -30,8 +31,8 @@ def create_admin(db_session: Session, *, is_active: bool = True) -> Admin:
 @pytest.fixture()
 def admin_client(client: TestClient, db_session: Session) -> TestClient:
     create_admin(db_session)
-    response = client.post(
-        "/admin/login",
+    response = admin_login(
+        client,
         data={"username": "admin", "password": "strong-admin-password"},
         follow_redirects=False,
     )
@@ -228,8 +229,8 @@ def test_admin_rejects_invalid_credentials(
 ) -> None:
     create_admin(db_session)
 
-    response = client.post(
-        "/admin/login",
+    response = admin_login(
+        client,
         data={"username": "admin", "password": "wrong-password"},
     )
 
@@ -243,8 +244,8 @@ def test_admin_login_opens_crud_sections(
 ) -> None:
     create_admin(db_session)
 
-    login_response = client.post(
-        "/admin/login",
+    login_response = admin_login(
+        client,
         data={"username": "admin", "password": "strong-admin-password"},
         follow_redirects=False,
     )
@@ -283,8 +284,8 @@ def test_admin_forms_use_russian_choices_and_automatic_slug(
     db_session: Session,
 ) -> None:
     create_admin(db_session)
-    client.post(
-        "/admin/login",
+    admin_login(
+        client,
         data={"username": "admin", "password": "strong-admin-password"},
     )
 
@@ -351,8 +352,8 @@ def test_inactive_admin_cannot_login(
 ) -> None:
     create_admin(db_session, is_active=False)
 
-    response = client.post(
-        "/admin/login",
+    response = admin_login(
+        client,
         data={"username": "admin", "password": "strong-admin-password"},
     )
 
@@ -364,12 +365,12 @@ def test_admin_logout_clears_session(
     db_session: Session,
 ) -> None:
     create_admin(db_session)
-    client.post(
-        "/admin/login",
+    admin_login(
+        client,
         data={"username": "admin", "password": "strong-admin-password"},
     )
 
-    logout_response = client.get("/admin/logout", follow_redirects=False)
+    logout_response = client.post("/admin/logout", follow_redirects=False)
     admin_response = client.get("/admin/", follow_redirects=False)
 
     assert logout_response.status_code == 302

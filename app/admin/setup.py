@@ -7,8 +7,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqladmin import Admin as SQLAdmin, I18nConfig
 from sqladmin.authentication import login_required
+from starlette.exceptions import HTTPException
 
 from app.admin.auth import AdminAuthentication
+from app.admin.csrf import admin_csrf_token
 from app.admin.views import ADMIN_VIEWS
 from app.core.config import settings
 from app.core.time import APP_TIMEZONE
@@ -16,6 +18,18 @@ from app.models import Competition, Registration, Sport, Training
 
 
 class SportsClubAdmin(SQLAdmin):
+    async def login(self, request: Request):  # type: ignore[no-untyped-def]
+        try:
+            return await super().login(request)
+        except HTTPException as exc:
+            if exc.status_code != 429:
+                raise
+            response = await self.templates.TemplateResponse(
+                request, "sqladmin/login.html", {"error": exc.detail}, status_code=429
+            )
+            response.headers.update(exc.headers or {})
+            return response
+
     @login_required
     async def index(self, request: Request):  # type: ignore[no-untyped-def]
         with self.session_maker() as session:
@@ -76,5 +90,10 @@ def setup_admin(
 
     for view in ADMIN_VIEWS:
         admin.add_view(view)
+
+    admin.templates.env.globals["admin_csrf_token"] = admin_csrf_token
+    for route in admin.admin.routes:
+        if route.name == "logout":
+            route.methods = {"POST"}
 
     return admin

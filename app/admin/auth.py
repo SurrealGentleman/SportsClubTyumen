@@ -4,8 +4,14 @@ from pwdlib.exceptions import PwdlibError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from sqladmin.authentication import AuthenticationBackend
+from starlette.concurrency import run_in_threadpool
+from starlette.exceptions import HTTPException
+from starlette.middleware import Middleware
 from starlette.requests import Request
 
+from app.admin.csrf import AdminCSRFMiddleware
+from app.admin.rate_limit import LoginRateLimiter
+from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.models import Admin
 
@@ -25,12 +31,33 @@ class AdminAuthentication(AuthenticationBackend):
             max_age=8 * 60 * 60,
         )
         self.session_maker = session_maker
+        self.middlewares.append(Middleware(AdminCSRFMiddleware))
+        self.limiter = LoginRateLimiter(
+            session_maker,
+            secret_key,
+            account_limit=settings.admin_login_account_limit,
+            ip_limit=settings.admin_login_ip_limit,
+            window_seconds=settings.admin_login_window_seconds,
+        )
         self._dummy_password_hash = get_password_hash("not-the-admin-password")
 
     async def login(self, request: Request) -> bool:
         form = await request.form()
         login = str(form.get("username", "")).strip()
         password = str(form.get("password", ""))
+
+        retry_after = await run_in_threadpool(
+            self.limiter.consume,
+            login,
+            request.client.host if request.client else "unknown",
+        )
+        if retry_after:
+            raise HTTPException(
+                status_code=429,
+                detail="Слишком много попыток входа. Повторите через "
+                f"{retry_after} сек.",
+                headers={"Retry-After": str(retry_after)},
+            )
 
         with self.session_maker() as session:
             admin = session.scalar(
@@ -42,7 +69,9 @@ class AdminAuthentication(AuthenticationBackend):
 
         password_hash = admin.password_hash if admin else self._dummy_password_hash
         try:
-            password_is_valid = verify_password(password, password_hash)
+            password_is_valid = await run_in_threadpool(
+                verify_password, password, password_hash
+            )
         except PwdlibError:
             password_is_valid = False
 

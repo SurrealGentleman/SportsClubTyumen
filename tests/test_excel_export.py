@@ -4,6 +4,7 @@ from io import BytesIO
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 from sqlalchemy.orm import Session
+from tests.admin_helpers import admin_login
 
 from app.core.security import get_password_hash
 from app.models import (
@@ -28,8 +29,8 @@ def create_admin(db_session: Session) -> None:
 
 
 def login(client: TestClient) -> None:
-    response = client.post(
-        "/admin/login",
+    response = admin_login(
+        client,
         data={"username": "admin", "password": "strong-admin-password"},
     )
     assert response.status_code == 200

@@ -32,6 +32,7 @@
 {% endmacro %}
 
 {% macro render_form_fields(form, form_opts=None, ajax_lookup_url="") %}
+  <input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
   {% if form.hidden_tag is defined %}
     {{ form.hidden_tag() }}
   {% else %}
