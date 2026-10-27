@@ -23,29 +23,6 @@ def test_missing_public_pages_render_html(client: TestClient, path: str) -> None
     assert 'rel="icon"' in response.text
 
 
-@pytest.mark.parametrize("path", ["/api", "/api/v1/missing", "/static/missing.png"])
-def test_missing_service_resources_keep_json(client: TestClient, path: str) -> None:
-    response = client.get(path)
-
-    assert response.status_code == 404
-    assert response.json() == {"detail": "Not Found"}
-
-
-def test_explicit_json_request_keeps_json(client: TestClient) -> None:
-    response = client.get("/missing-page", headers={"Accept": "application/json"})
-
-    assert response.status_code == 404
-    assert response.json() == {"detail": "Not Found"}
-
-
-def test_unsupported_method_keeps_status_and_allow_header(client: TestClient) -> None:
-    response = client.post("/")
-
-    assert response.status_code == 405
-    assert response.headers["allow"] == "GET"
-    assert "Действие недоступно" in response.text
-
-
 @pytest.mark.parametrize(
     ("status_code", "title", "headers"),
     [

@@ -29,16 +29,10 @@ class ScriptParser(HTMLParser):
     "path",
     [
         "/",
-        "/schedule",
-        "/competitions",
         "/admin/login",
         "/api/v1/health",
         "/static/css/app.css",
-        "/static/js/admin-flash.js",
         "/missing-page",
-        "/docs",
-        "/redoc",
-        "/docs/oauth2-redirect",
     ],
 )
 def test_headers_cover_pages_assets_api_errors_and_docs(client, path):

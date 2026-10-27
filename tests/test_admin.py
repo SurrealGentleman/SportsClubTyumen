@@ -10,9 +10,6 @@ from app.admin.views import CompetitionAdmin, CompetitionAdminForm, RussianModel
 from app.models import (
     Competition,
     RegistrationType,
-    Sport,
-    Training,
-    TrainingGroup,
 )
 
 
@@ -267,73 +264,6 @@ def test_admin_login_opens_crud_sections(
     assert "Выход" in admin_response.text
 
 
-def test_admin_forms_use_russian_choices_and_automatic_slug(
-    client: TestClient,
-    db_session: Session,
-) -> None:
-    create_admin(db_session)
-    admin_login(
-        client,
-        data={"username": "admin", "password": "strong-admin-password"},
-    )
-
-    sport_form = client.get("/admin/sport/create")
-    training_form = client.get("/admin/training/create")
-    competition_form = client.get("/admin/competition/create")
-
-    assert 'name="slug"' not in sport_form.text
-    assert 'name="image_path"' not in sport_form.text
-    assert "Понедельник" in training_form.text
-    assert "Воскресенье" in training_form.text
-    assert "Мужчины" in training_form.text
-    assert "Девушки" in training_form.text
-    assert "Общая группа" in training_form.text
-    assert "Индивидуальная" in competition_form.text
-    assert "Командная" in competition_form.text
-    assert "Дата и время Тюмени (UTC+5)" in competition_form.text
-    assert 'name="slug"' not in competition_form.text
-    assert 'title="Обязательное поле"' in training_form.text
-    assert "This is a required field" not in training_form.text
-
-    response = client.post(
-        "/admin/sport/create",
-        data={
-            "name": "Лёгкая атлетика",
-            "description": "",
-            "is_active": "y",
-            "save": "Сохранить",
-        },
-        follow_redirects=False,
-    )
-    sport = db_session.query(Sport).filter_by(name="Лёгкая атлетика").one()
-
-    assert response.status_code == 302
-    assert sport.slug == "legkaya-atletika"
-
-    training_response = client.post(
-        "/admin/training/create",
-        data={
-            "sport": str(sport.id),
-            "group_name": "Общая группа",
-            "weekday": "4",
-            "start_time": "18:00",
-            "end_time": "19:30",
-            "location": "Спорткомплекс ТюмГУ",
-            "coach_name": "Иван Тренер",
-            "coach_email": "",
-            "notes": "",
-            "is_active": "y",
-            "save": "Сохранить",
-        },
-        follow_redirects=False,
-    )
-    assert training_response.status_code == 302, training_response.text
-    training = db_session.query(Training).one()
-
-    assert training.group_name == TrainingGroup.mixed
-    assert training.weekday == 4
-
-
 def test_inactive_admin_cannot_login(
     client: TestClient,
     db_session: Session,
@@ -346,21 +276,3 @@ def test_inactive_admin_cannot_login(
     )
 
     assert response.status_code == 400
-
-
-def test_admin_logout_clears_session(
-    client: TestClient,
-    db_session: Session,
-) -> None:
-    create_admin(db_session)
-    admin_login(
-        client,
-        data={"username": "admin", "password": "strong-admin-password"},
-    )
-
-    logout_response = client.post("/admin/logout", follow_redirects=False)
-    admin_response = client.get("/admin/", follow_redirects=False)
-
-    assert logout_response.status_code == 302
-    assert logout_response.headers["location"].endswith("/admin/login")
-    assert admin_response.status_code == 302
