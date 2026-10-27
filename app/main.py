@@ -6,8 +6,10 @@ from starlette.staticfiles import StaticFiles
 from app.admin.setup import setup_admin
 from app.api.v1.router import router as api_v1_router
 from app.core.config import settings
+from app.core.error_pages import setup_error_handlers
 from app.db.session import SessionLocal, engine
 from app.routers.pages import router as pages_router
+from app.routers.pages import templates
 
 
 def create_app(
@@ -23,6 +25,7 @@ def create_app(
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
     app.include_router(pages_router)
     app.include_router(api_v1_router, prefix="/api/v1")
+    setup_error_handlers(app, templates)
     setup_admin(app, db_engine=db_engine, session_maker=session_maker)
 
     return app

@@ -566,7 +566,8 @@ a.feature-card:hover {
 }
 
 .registration-form-card,
-.success-card {
+.success-card,
+.error-card {
   position: relative;
   z-index: 2;
   max-width: 900px;
@@ -683,7 +684,8 @@ a.feature-card:hover {
   font-weight: 800;
 }
 
-.success-section {
+.success-section,
+.error-section {
   display: grid;
   min-height: calc(100vh - 160px);
   padding: 5rem 0;
@@ -693,21 +695,33 @@ a.feature-card:hover {
     var(--surface-soft);
 }
 
-.success-card {
+.success-card,
+.error-card {
   margin-top: 0;
 }
 
-.success-card h1 {
+.success-card h1,
+.error-card h1 {
   font-size: clamp(2rem, 7vw, 3.6rem);
   font-weight: 850;
   letter-spacing: -0.045em;
 }
 
-.success-card > p:not(.eyebrow) {
+.success-card > p:not(.eyebrow),
+.error-card > p:not(.error-code) {
   max-width: 550px;
   margin: 1rem auto 2rem;
   color: var(--muted);
   font-size: 1.1rem;
+}
+
+.error-code {
+  margin: 0 0 1.5rem;
+  color: var(--brand-blue-dark);
+  font-size: clamp(5rem, 18vw, 8rem);
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: -0.055em;
 }
 
 .success-icon {

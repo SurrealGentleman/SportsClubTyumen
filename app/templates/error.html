@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}{{ error_code }} — {{ error_title }} — ССК «Ладья»{% endblock %}
+
+{% block content %}
+  <section class="error-section">
+    <div class="container">
+      <div class="error-card mx-auto text-center">
+        <p class="error-code" aria-label="Ошибка {{ error_code }}">{{ error_code }}</p>
+        <h1>{{ error_title }}</h1>
+        <p>{{ error_description }}</p>
+        <div class="d-flex flex-column flex-sm-row justify-content-center gap-2">
+          <a class="btn btn-primary" href="{{ url_for('home') }}">На главную</a>
+          <a class="btn btn-outline-primary" href="{{ url_for('competitions') }}">Соревнования</a>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
