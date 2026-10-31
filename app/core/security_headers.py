@@ -12,12 +12,6 @@ BASE_POLICY = (
 CAPTCHA_ORIGINS = (
     "https://smartcaptcha.cloud.yandex.ru https://smartcaptcha.yandexcloud.net"
 )
-BOOTSTRAP_CSS = (
-    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-)
-BOOTSTRAP_JS = (
-    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-)
 
 
 def content_security_policy(path: str, nonce: str, *, captcha: bool) -> str:
@@ -40,10 +34,6 @@ def content_security_policy(path: str, nonce: str, *, captcha: bool) -> str:
     elif path == "/admin" or path.startswith("/admin/"):
         pass  # SQLAdmin assets are served locally; no CDN or CAPTCHA privileges.
     else:
-        scripts += f" {BOOTSTRAP_JS}"
-        styles += f" {BOOTSTRAP_CSS}"
-        # DevTools fetches source maps through connect-src, not script/style-src.
-        connections += f" {BOOTSTRAP_JS}.map {BOOTSTRAP_CSS}.map"
         if captcha:
             scripts += f" {CAPTCHA_ORIGINS}"
             connections += f" {CAPTCHA_ORIGINS}"

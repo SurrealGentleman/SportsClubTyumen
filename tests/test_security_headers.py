@@ -66,23 +66,25 @@ def test_headers_cover_uncaught_500(test_app, monkeypatch):
 
 
 def test_csp_profiles_do_not_share_external_script_permissions(client):
-    public = client.get("/").headers["content-security-policy"]
+    home = client.get("/")
+    public = home.headers["content-security-policy"]
     admin = client.get("/admin/login").headers["content-security-policy"]
-    assert "bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" in public
+    docs = client.get("/docs").headers["content-security-policy"]
+
+    assert "script-src 'self';" in public
     assert "script-src 'self';" in admin
-    assert "jsdelivr" not in admin and "smartcaptcha" not in admin
+    assert "jsdelivr" not in public
+    assert "jsdelivr" not in admin
     assert "smartcaptcha" not in public
-    connections = public.split("connect-src ", 1)[1].split(";", 1)[0].split()
-    assert (
-        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js.map"
-        in connections
-    )
-    assert (
-        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css.map"
-        in connections
-    )
-    assert "https://cdn.jsdelivr.net" not in connections
-    assert ".map" not in admin
+    assert "smartcaptcha" not in admin
+    assert "https://cdn.jsdelivr.net" in docs
+
+    for filename in ("bootstrap.min.css", "bootstrap.bundle.min.js"):
+        path = f"/static/vendor/bootstrap/{filename}"
+        assert path in home.text
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.content
 
 
 def test_admin_current_forms_have_no_inline_scripts_or_event_handlers(
