@@ -7,7 +7,7 @@
     <div class="container">
       <article class="info-card legal-document mx-auto">
         <h1>Согласие на обработку персональных данных</h1>
-        {% if document_text %}<div class="legal-document-text">{{ document_text }}</div>{% endif %}
+        {% if document_text %}<div class="legal-document-text">{{ document_text | safe }}</div>{% endif %}
       </article>
     </div>
   </section>

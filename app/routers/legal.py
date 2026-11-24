@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from app.core.privacy import consent_document_text, privacy_policy_text
+from app.core.privacy import consent_document_html, privacy_policy_html
 from app.core.templating import templates
 
 router = APIRouter(include_in_schema=False)
@@ -16,7 +16,7 @@ def personal_data_consent(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "legal/personal_data_consent.html",
-        {"document_text": consent_document_text()},
+        {"document_text": consent_document_html()},
     )
 
 
@@ -40,5 +40,5 @@ def privacy_policy(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "legal/privacy_policy.html",
-        {"document_text": privacy_policy_text()},
+        {"document_text": privacy_policy_html()},
     )
