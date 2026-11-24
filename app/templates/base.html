@@ -7,14 +7,8 @@
     <link
       rel="icon"
       type="image/png"
-      sizes="46x32"
+      sizes="96x96"
       href="{{ url_for('static', path=brand_assets.favicon) }}"
-    >
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="23x16"
-      href="{{ url_for('static', path=brand_assets.favicon_small) }}"
     >
     <title>{% block title %}Спортивный клуб ТюмГУ{% endblock %}</title>
     <link
@@ -27,16 +21,33 @@
     <header class="site-header">
       <nav class="navbar navbar-expand-md" aria-label="Основная навигация">
         <div class="container">
-          <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('home') }}">
-            <img
-              class="navbar-brand-logo"
-              src="{{ url_for('static', path=brand_assets.header_logo) }}"
-              alt="Логотип ССК «Ладья»"
-              width="69"
-              height="48"
+          <div class="navbar-brand-group d-flex align-items-center gap-2">
+            <a
+              href="https://www.utmn.ru"
+              target="_blank"
+              rel="noopener"
+              aria-label="Тюменский государственный университет"
             >
-            <span><strong>Ладья</strong><small>Спортивный клуб ТюмГУ</small></span>
-          </a>
+              <img
+                class="navbar-brand-utmn"
+                src="{{ url_for('static', path=brand_assets.utmn_logo) }}"
+                alt="Тюменский государственный университет"
+                width="73"
+                height="44"
+              >
+            </a>
+            <span class="navbar-brand-divider" aria-hidden="true"></span>
+            <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('home') }}">
+              <img
+                class="navbar-brand-logo"
+                src="{{ url_for('static', path=brand_assets.header_logo) }}"
+                alt="Логотип ССК «Ладья»"
+                width="69"
+                height="48"
+              >
+              <span><strong>Ладья</strong><small>Спортивный клуб ТюмГУ</small></span>
+            </a>
+          </div>
           <button
             class="navbar-toggler"
             type="button"
@@ -61,7 +72,21 @@
     <main>{% block content %}{% endblock %}</main>
 
     <footer class="site-footer">
-      <div class="container d-flex flex-column flex-sm-row justify-content-between gap-2">
+      <div class="container d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3">
+        <a
+          href="https://www.utmn.ru"
+          target="_blank"
+          rel="noopener"
+          aria-label="Тюменский государственный университет"
+        >
+          <img
+            class="footer-utmn-logo"
+            src="{{ url_for('static', path=brand_assets.utmn_logo) }}"
+            alt="Тюменский государственный университет"
+            width="60"
+            height="36"
+          >
+        </a>
         <span>Спортивный клуб ТюмГУ «Ладья»</span>
         <a href="{{ url_for('privacy_policy') }}">Политика обработки персональных данных</a>
         <span>Тюмень</span>

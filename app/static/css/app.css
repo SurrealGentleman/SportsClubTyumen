@@ -73,6 +73,24 @@ a {
   object-fit: contain;
 }
 
+.navbar-brand-utmn {
+  width: auto;
+  height: 42px;
+  object-fit: contain;
+}
+
+.navbar-brand-divider {
+  width: 1px;
+  height: 34px;
+  background: var(--line);
+}
+
+.footer-utmn-logo {
+  width: auto;
+  height: 38px;
+  object-fit: contain;
+}
+
 .navbar-brand strong {
   display: block;
   font-size: 1.12rem;
